@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import "./App.css";
 import DiffEditor from "./components/DiffEditor";
 import type { MonacoTheme } from "./monaco";
+import PlainEditor from "./components/PlainEditor";
 
 // const theme = 'vs-dark';
 const originalText = `function add(a, b) {
@@ -24,7 +25,7 @@ function App() {
 
 	return (
 		<>
-			<DiffEditor
+			{/* <DiffEditor
 				originalText={originalText}
 				modifiedText={modifiedText}
 				language={language}
@@ -33,7 +34,21 @@ function App() {
 				sideBySide={true}
 				diffAlgorithm="advanced"
 				fontSize={14}
-			/>
+			/> */}
+			<div className="flex gap-2 p-1">
+				<PlainEditor
+					text={originalText}
+					language={language}
+					theme={theme}
+					fontSize={14}
+				/>
+				<PlainEditor
+					text={modifiedText}
+					language={language}
+					theme={theme}
+					fontSize={14}
+				/>
+			</div>
 			<button
 				onClick={() =>
 					setTheme((prev) => {

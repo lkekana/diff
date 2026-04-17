@@ -1,3 +1,5 @@
+// import { platform } from '@tauri-apps/plugin-os';
+
 export type DiffAlgorithm = "advanced" | "legacy";
 export type MonacoTheme = "vs" | "vs-dark" | "hc-black";
 export type LanguageID =
@@ -182,3 +184,30 @@ export type LanguageID =
 	| "wgsl"
 	| "xml"
 	| "yaml";
+
+const platform = () => {
+	return "macos";
+};
+
+const getOSFont = () => {
+	const os = platform();
+	console.log(`Detected OS: ${os}`);
+	switch (os) {
+		case "windows":
+			return 'Consolas, "Courier New", monospace';
+		case "macos":
+		case "ios":
+			return 'Menlo, Monaco, "Courier New", monospace';
+		case "linux":
+		case "freebsd":
+		case "dragonfly":
+		case "netbsd":
+		case "openbsd":
+		case "solaris":
+		case "android":
+			return '"DejaVu Sans Mono", "Liberation Mono", Consolas, "Courier New", monospace';
+		default:
+			return "monospace";
+	}
+};
+export const DEFAULT_FONTS = getOSFont();

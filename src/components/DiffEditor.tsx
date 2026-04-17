@@ -1,35 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
-import type { LanguageID, MonacoTheme, DiffAlgorithm } from "../monaco";
-// import { platform } from '@tauri-apps/plugin-os';
-
-const platform = () => {
-	return "macos";
-};
-
-const getOSFont = () => {
-	const os = platform();
-	console.log(`Detected OS: ${os}`);
-	switch (os) {
-		case "windows":
-			return 'Consolas, "Courier New", monospace';
-		case "macos":
-		case "ios":
-			return 'Menlo, Monaco, "Courier New", monospace';
-		case "linux":
-		case "freebsd":
-		case "dragonfly":
-		case "netbsd":
-		case "openbsd":
-		case "solaris":
-		case "android":
-			return '"DejaVu Sans Mono", "Liberation Mono", Consolas, "Courier New", monospace';
-		default:
-			return "monospace";
-	}
-};
-const DEFAULT_FONTS = getOSFont();
+import {
+	type LanguageID,
+	type MonacoTheme,
+	type DiffAlgorithm,
+	DEFAULT_FONTS,
+} from "../monaco";
 
 // Initialize Monaco workers
 if (!self.MonacoEnvironment) {
@@ -167,8 +144,7 @@ export default function DiffEditor({
 	return (
 		<div
 			ref={containerRef}
-			className={className}
-			style={{ width: "100vw", height: "100vh", minHeight: "400px" }}
+			className={`w-screen h-screen min-h-100 ${className}`}
 		/>
 	);
 }
