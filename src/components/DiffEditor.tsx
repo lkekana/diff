@@ -16,9 +16,8 @@ if (!self.MonacoEnvironment) {
 }
 
 interface DiffEditorProps {
-	originalText: string;
-	modifiedText: string;
-	language?: LanguageID;
+	originalModel: monaco.editor.ITextModel | null;
+	modifiedModel: monaco.editor.ITextModel | null;
 	theme?: MonacoTheme;
 	editable?: boolean;
 	sideBySide?: boolean;
@@ -28,9 +27,8 @@ interface DiffEditorProps {
 }
 
 export default function DiffEditor({
-	originalText,
-	modifiedText,
-	language = "plaintext",
+	originalModel,
+	modifiedModel,
 	theme = "vs-dark",
 	editable = true,
 	sideBySide = true,
@@ -38,12 +36,10 @@ export default function DiffEditor({
 	fontSize = 12,
 	className = "",
 }: DiffEditorProps) {
-	// console.log(`Language: ${language}, Theme: ${theme}, Editable: ${editable}, SideBySide: ${sideBySide}, DiffAlgorithm: ${diffAlgorithm}, FontSize: ${fontSize}`);
+	// console.log(`Theme: ${theme}, Editable: ${editable}, SideBySide: ${sideBySide}, DiffAlgorithm: ${diffAlgorithm}, FontSize: ${fontSize}`);
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const editorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(null);
-	const originalModelRef = useRef<monaco.editor.ITextModel | null>(null);
-	const modifiedModelRef = useRef<monaco.editor.ITextModel | null>(null);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: We only want to run this once on mount
 	useEffect(() => {
@@ -84,45 +80,35 @@ export default function DiffEditor({
 			},
 		);
 
-		const originalModel = monaco.editor.createModel(originalText, language);
-
-		const modifiedModel = monaco.editor.createModel(modifiedText, language);
-
-		diffEditor.setModel({
-			original: originalModel,
-			modified: modifiedModel,
-		});
+		if (originalModel !== null && modifiedModel !== null) {
+			diffEditor.setModel({
+				original: originalModel,
+				modified: modifiedModel,
+			});
+		}
 		editorRef.current = diffEditor;
-		originalModelRef.current = originalModel;
-		modifiedModelRef.current = modifiedModel;
 		// editorRef.current.updateOptions
 
 		// Cleanup
 		return () => {
-			originalModel.dispose();
-			modifiedModel.dispose();
 			diffEditor.dispose();
 			editorRef.current = null;
-			originalModelRef.current = null;
-			modifiedModelRef.current = null;
 		};
 	}, []);
 
-	// Sync content when props change
+	// Sync models
 	useEffect(() => {
-		if (originalModelRef.current)
-			originalModelRef.current.setValue(originalText);
-		if (modifiedModelRef.current)
-			modifiedModelRef.current.setValue(modifiedText);
-	}, [originalText, modifiedText]);
-
-	// Sync language
-	useEffect(() => {
-		if (originalModelRef.current)
-			monaco.editor.setModelLanguage(originalModelRef.current, language);
-		if (modifiedModelRef.current)
-			monaco.editor.setModelLanguage(modifiedModelRef.current, language);
-	}, [language]);
+		if (editorRef.current) {
+			if (originalModel !== null && modifiedModel !== null) {
+				editorRef.current.setModel({
+					original: originalModel,
+					modified: modifiedModel,
+				});
+			} else {
+				editorRef.current.setModel(null);
+			}
+		}
+	}, [originalModel, modifiedModel]);
 
 	// Sync options
 	useEffect(() => {
@@ -144,7 +130,7 @@ export default function DiffEditor({
 	return (
 		<div
 			ref={containerRef}
-			className={`w-screen h-screen min-h-100 ${className}`}
+			className={`w-screen h-full min-h-100 ${className}`}
 		/>
 	);
 }

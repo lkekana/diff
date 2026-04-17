@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
-import { type LanguageID, type MonacoTheme, DEFAULT_FONTS } from "../monaco";
+import { type MonacoTheme, DEFAULT_FONTS } from "../monaco";
 import { useDropzone } from "react-dropzone";
 
 // Initialize Monaco workers
@@ -12,8 +12,7 @@ if (!self.MonacoEnvironment) {
 }
 
 interface PlainEditorProps {
-	text: string;
-	language?: LanguageID;
+	model: monaco.editor.ITextModel | null;
 	theme?: MonacoTheme;
 	fontSize?: number;
 	className?: string;
@@ -21,19 +20,18 @@ interface PlainEditorProps {
 }
 
 export default function PlainEditor({
-	text,
-	language = "plaintext",
+	model,
 	theme = "vs-dark",
 	fontSize = 12,
 	className = "",
 	readOnly = false,
 }: PlainEditorProps) {
+	const id = useId();
 	const [showOverlay, setShowOverlay] = useState(true);
 	const overlayWidgetRef = useRef<monaco.editor.IOverlayWidget | null>(null);
 	const overlayDomRef = useRef<HTMLDivElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
-	const modifiedModelRef = useRef<monaco.editor.ITextModel | null>(null);
 
 	const onDrop = useCallback((acceptedFiles: File[]) => {
 		// Do something with the files
@@ -59,7 +57,7 @@ export default function PlainEditor({
 		const result = document.createElement("div");
 		result.textContent = isDragActive
 			? "📁 Drop file here to load"
-			: "Start typing to get started. Or drop a file here. Or double check to find a file.";
+			: "Start typing to get started. Or drop a file here. Or double click to find a file.";
 		result.className =
 			"bg-white/10 p-5 rounded-lg border-2 border-dashed border-white/50 pointer-events-none text-lg";
 		return result.outerHTML;
@@ -73,7 +71,7 @@ export default function PlainEditor({
 					? `${containerRef.current.clientHeight}px`
 					: "100%";
 			return {
-				getId: () => "drop-overlay-widget",
+				getId: () => `plain-editor-overlay-${id}`,
 				getDomNode: () => {
 					if (!overlayDomRef.current) {
 						overlayDomRef.current = document.createElement("div");
@@ -91,7 +89,7 @@ export default function PlainEditor({
 				},
 				getPosition: () => null,
 			};
-		}, [getOverlayContent, isDragActive]);
+		}, [getOverlayContent, isDragActive, id]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Run once on mount
 	useEffect(() => {
@@ -116,10 +114,8 @@ export default function PlainEditor({
 			dragAndDrop: false,
 		});
 
-		const modifiedModel = monaco.editor.createModel(text, language);
-		editor.setModel(modifiedModel);
+		editor.setModel(model);
 		editorRef.current = editor;
-		modifiedModelRef.current = modifiedModel;
 
 		// Create and conditionally add overlay widget
 		overlayWidgetRef.current = createOverlayWidget();
@@ -135,10 +131,8 @@ export default function PlainEditor({
 			if (overlayWidgetRef.current) {
 				editor.removeOverlayWidget(overlayWidgetRef.current);
 			}
-			modifiedModel.dispose();
 			editor.dispose();
 			editorRef.current = null;
-			modifiedModelRef.current = null;
 			overlayWidgetRef.current = null;
 		};
 	}, []);
@@ -156,6 +150,7 @@ export default function PlainEditor({
 			if (overlayDomRef.current) {
 				overlayDomRef.current.innerHTML = getOverlayContent();
 			}
+			editor.removeOverlayWidget(widget); // Remove first to ensure updated content
 			editor.addOverlayWidget(widget);
 		} else {
 			editor.removeOverlayWidget(widget);
@@ -165,16 +160,12 @@ export default function PlainEditor({
 		editor.layout();
 	}, [showOverlay, isDragActive, getOverlayContent]);
 
-	// Sync content when props change
+	// Sync model
 	useEffect(() => {
-		if (modifiedModelRef.current) modifiedModelRef.current.setValue(text);
-	}, [text]);
-
-	// Sync language
-	useEffect(() => {
-		if (modifiedModelRef.current)
-			monaco.editor.setModelLanguage(modifiedModelRef.current, language);
-	}, [language]);
+		if (editorRef.current) {
+			editorRef.current.setModel(model);
+		}
+	}, [model]);
 
 	// Sync options
 	useEffect(() => {
@@ -193,7 +184,7 @@ export default function PlainEditor({
 	return (
 		<div
 			{...getRootProps()}
-			className="relative flex items-center justify-center w-full h-dvh min-h-100"
+			className="relative flex items-center justify-center w-full h-full min-h-100"
 		>
 			<input {...getInputProps()} />
 			<div
