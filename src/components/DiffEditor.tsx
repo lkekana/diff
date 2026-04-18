@@ -18,7 +18,6 @@ if (!self.MonacoEnvironment) {
 interface DiffEditorProps {
 	originalModel: monaco.editor.ITextModel | null;
 	modifiedModel: monaco.editor.ITextModel | null;
-	theme?: MonacoTheme;
 	editable?: boolean;
 	sideBySide?: boolean;
 	diffAlgorithm?: DiffAlgorithm;
@@ -29,7 +28,6 @@ interface DiffEditorProps {
 export default function DiffEditor({
 	originalModel,
 	modifiedModel,
-	theme = "vs-dark",
 	editable = true,
 	sideBySide = true,
 	diffAlgorithm = "advanced",
@@ -40,30 +38,21 @@ export default function DiffEditor({
 
 	const containerRef = useRef<HTMLDivElement>(null);
 	const editorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(null);
+	const initializedRef = useRef(false);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: We only want to run this once on mount
 	useEffect(() => {
-		if (!containerRef.current) return;
+		if (containerRef.current === null || initializedRef.current) return;
+		initializedRef.current = true;
 
 		const diffEditor = monaco.editor.createDiffEditor(
 			containerRef.current,
 			{
-				theme,
-
-				// no edits allowed
-				// readOnly: true,
-				// originalEditable: false,
-
-				// edits allowed
-				//   readOnly: false,
-				//   originalEditable: true,
 				readOnly: !editable,
 				originalEditable: editable,
 
 				automaticLayout: true,
 				renderSideBySide: sideBySide,
-				// renderSideBySide: false,
-				// minimap: { enabled: false },
 				minimap: { enabled: true },
 				find: {
 					findOnType: true,
@@ -89,9 +78,16 @@ export default function DiffEditor({
 		editorRef.current = diffEditor;
 		// editorRef.current.updateOptions
 
+		const resizeObserver = new ResizeObserver(() => {
+			diffEditor.layout();
+		});
+		resizeObserver.observe(containerRef.current);
+
 		// Cleanup
 		return () => {
+			resizeObserver.disconnect();
 			diffEditor.dispose();
+			initializedRef.current = false;
 			editorRef.current = null;
 		};
 	}, []);
@@ -112,7 +108,7 @@ export default function DiffEditor({
 
 	// Sync options
 	useEffect(() => {
-		if (editorRef.current)
+		if (editorRef.current) {
 			editorRef.current.updateOptions({
 				readOnly: !editable,
 				originalEditable: editable,
@@ -120,12 +116,9 @@ export default function DiffEditor({
 				diffAlgorithm,
 				fontSize,
 			});
+			editorRef.current.layout();
+		}
 	}, [editable, sideBySide, diffAlgorithm, fontSize]);
-
-	// Sync theme
-	useEffect(() => {
-		monaco.editor.setTheme(theme);
-	}, [theme]);
 
 	return (
 		<div

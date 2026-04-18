@@ -13,25 +13,28 @@ if (!self.MonacoEnvironment) {
 
 interface PlainEditorProps {
 	model: monaco.editor.ITextModel | null;
-	theme?: MonacoTheme;
 	fontSize?: number;
 	className?: string;
 	readOnly?: boolean;
 }
 
+const OVERLAY_BASE_CLASSES = `drop-overlay w-full h-full flex items-center justify-center z-9999 text-white text-center p-4 box-border rounded-lg border border-blue-500/50 transition-opacity duration-150`;
+const MESSAGE_BOX_CLASSES = `bg-white/10 p-5 rounded-lg border-2 border-dashed border-white/50 pointer-events-none text-lg`;
+
 export default function PlainEditor({
 	model,
-	theme = "vs-dark",
 	fontSize = 12,
 	className = "",
 	readOnly = false,
 }: PlainEditorProps) {
 	const id = useId();
 	const [showOverlay, setShowOverlay] = useState(true);
-	const overlayWidgetRef = useRef<monaco.editor.IOverlayWidget | null>(null);
-	const overlayDomRef = useRef<HTMLDivElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
+	const overlayWidgetRef = useRef<monaco.editor.IOverlayWidget | null>(null);
+	const overlayDivRef = useRef<HTMLDivElement>(null);
+	const overlayMessageBoxRef = useRef<HTMLDivElement>(null);
+	const initializedRef = useRef(false);
 
 	const onDrop = useCallback((acceptedFiles: File[]) => {
 		// Do something with the files
@@ -53,50 +56,48 @@ export default function PlainEditor({
 		onDropRejected: () => setShowOverlay(false),
 	});
 
-	const getOverlayContent = useCallback(() => {
-		const result = document.createElement("div");
-		result.textContent = isDragActive
-			? "📁 Drop file here to load"
-			: "Start typing to get started. Or drop a file here. Or double click to find a file.";
-		result.className =
-			"bg-white/10 p-5 rounded-lg border-2 border-dashed border-white/50 pointer-events-none text-lg";
-		return result.outerHTML;
-	}, [isDragActive]);
-
 	// Create overlay widget
 	const createOverlayWidget =
 		useCallback((): monaco.editor.IOverlayWidget => {
-			const height =
-				containerRef.current !== null
-					? `${containerRef.current.clientHeight}px`
-					: "100%";
 			return {
 				getId: () => `plain-editor-overlay-${id}`,
 				getDomNode: () => {
-					if (!overlayDomRef.current) {
-						overlayDomRef.current = document.createElement("div");
-						overlayDomRef.current.className = `drop-overlay w-full h-parent flex items-center justify-center z-9999 text-white text-center p-4 box-border rounded-lg border border-blue-500/50 ${isDragActive ? "backdrop-blur-sm bg-black/20" : "backdrop-blur-none bg-grey/50"}`;
-						overlayDomRef.current.style.height = height;
-						overlayDomRef.current.innerHTML = getOverlayContent();
-						overlayDomRef.current.onclick = () => {
+					if (overlayDivRef.current === null) {
+						overlayDivRef.current = document.createElement("div");
+
+						// overlayDivRef.current.className = `${OVERLAY_BASE_CLASSES} ${
+						// 	isDragActive
+						// 		? "backdrop-blur-sm bg-black/20"
+						// 		: "backdrop-blur-none bg-grey/50"
+						// }`;
+						overlayDivRef.current.className = `${OVERLAY_BASE_CLASSES}`;
+						overlayDivRef.current.onclick = () => {
 							setShowOverlay(false);
 							if (editorRef.current) {
 								editorRef.current.focus();
 							}
 						};
+
+						if (overlayMessageBoxRef.current === null) {
+							overlayMessageBoxRef.current = document.createElement("div");
+							overlayMessageBoxRef.current.className = MESSAGE_BOX_CLASSES;
+							overlayMessageBoxRef.current.textContent = "Start typing to get started. Or drop a file here. Or double click to find a file.";
+						}
+
+						overlayDivRef.current.appendChild(overlayMessageBoxRef.current);
 					}
-					return overlayDomRef.current;
+					return overlayDivRef.current;
 				},
 				getPosition: () => null,
 			};
-		}, [getOverlayContent, isDragActive, id]);
+		}, [id]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Run once on mount
 	useEffect(() => {
-		if (!containerRef.current) return;
+		if (containerRef.current === null || initializedRef.current) return;
+		initializedRef.current = true;
 
 		const editor = monaco.editor.create(containerRef.current, {
-			theme,
 			readOnly: readOnly,
 			automaticLayout: true,
 			minimap: { enabled: true },
@@ -122,9 +123,20 @@ export default function PlainEditor({
 
 		// Show overlay if either internal state or drag state indicates it should be visible
 		const shouldShowOverlay = showOverlay || isDragActive;
-		if (shouldShowOverlay && overlayWidgetRef.current) {
+		if (shouldShowOverlay && overlayWidgetRef.current !== null) {
 			editor.addOverlayWidget(overlayWidgetRef.current);
+			editor.layout();
 		}
+
+		const resizeObserver = new ResizeObserver((entries) => {
+			for (const entry of entries) {
+				if (overlayDivRef.current !== null) {
+					overlayDivRef.current.style.height = `${entry.contentRect.height}px`;
+				}
+			}
+			editor.layout();
+		});
+		resizeObserver.observe(containerRef.current);
 
 		// Cleanup
 		return () => {
@@ -132,8 +144,10 @@ export default function PlainEditor({
 				editor.removeOverlayWidget(overlayWidgetRef.current);
 			}
 			editor.dispose();
+			initializedRef.current = false;
 			editorRef.current = null;
 			overlayWidgetRef.current = null;
+			resizeObserver.disconnect();
 		};
 	}, []);
 
@@ -141,24 +155,33 @@ export default function PlainEditor({
 	useEffect(() => {
 		const editor = editorRef.current;
 		const widget = overlayWidgetRef.current;
-		if (!editor || !widget) return;
+		const overlayDiv = overlayDivRef.current;
+		const messageBox = overlayMessageBoxRef.current;
+		if (editor === null || widget === null || overlayDiv === null || messageBox === null) return;
 
 		const shouldShowOverlay = showOverlay || isDragActive;
 
 		if (shouldShowOverlay) {
 			// Update overlay text based on state
-			if (overlayDomRef.current) {
-				overlayDomRef.current.innerHTML = getOverlayContent();
+			messageBox.textContent = isDragActive
+				? "📁 Drop file here to load"
+				: "Start typing to get started. Or drop a file here. Or double click to find a file.";
+			
+			overlayDiv.className = `${OVERLAY_BASE_CLASSES} ${
+				isDragActive ? "backdrop-blur-sm bg-black/20" : "backdrop-blur-none bg-grey/50"
+			}`;
+
+			// editor.removeOverlayWidget(widget);
+			// editor.addOverlayWidget(widget);
+			if (overlayDiv.parentNode === null) {
+				editor.addOverlayWidget(widget);
 			}
-			editor.removeOverlayWidget(widget); // Remove first to ensure updated content
-			editor.addOverlayWidget(widget);
 		} else {
 			editor.removeOverlayWidget(widget);
 		}
 
-		// Reposition widget after adding/removing
 		editor.layout();
-	}, [showOverlay, isDragActive, getOverlayContent]);
+	}, [showOverlay, isDragActive]);
 
 	// Sync model
 	useEffect(() => {
@@ -169,17 +192,14 @@ export default function PlainEditor({
 
 	// Sync options
 	useEffect(() => {
-		if (editorRef.current)
+		if (editorRef.current) {
 			editorRef.current.updateOptions({
 				fontSize,
 				readOnly: readOnly,
 			});
+			editorRef.current.layout();
+		}
 	}, [fontSize, readOnly]);
-
-	// Sync theme
-	useEffect(() => {
-		monaco.editor.setTheme(theme);
-	}, [theme]);
 
 	return (
 		<div
@@ -187,10 +207,13 @@ export default function PlainEditor({
 			className="relative flex items-center justify-center w-full h-full min-h-100"
 		>
 			<input {...getInputProps()} />
-			<div
-				ref={containerRef}
-				className={`flex size-full ${className}`}
-			/>
+			<div ref={containerRef} className={`flex size-full ${className}`} />
 		</div>
+	);
+}
+
+export function PlainEditorSkeleton() {
+	return (
+		<div className="monaco-editor relative flex items-center justify-center w-full h-full min-h-100" />
 	);
 }

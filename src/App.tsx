@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import "./App.css";
 import DiffEditor from "./components/DiffEditor";
 import type { MonacoTheme } from "./monaco";
-import PlainEditor from "./components/PlainEditor";
+import PlainEditor, { PlainEditorSkeleton } from "./components/PlainEditor";
 import * as monaco from "monaco-editor";
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 
@@ -37,6 +37,11 @@ function App() {
 	//   // setGreetMsg(await invoke("greet", { name }));
 	// }
 
+	// Sync theme with Monaco
+	useEffect(() => {
+		monaco.editor.setTheme(theme);
+	}, [theme]);
+
 	useEffect(() => {
 		const originalModel = monaco.editor.createModel(originalText, language);
 		const modifiedModel = monaco.editor.createModel(modifiedText, language);
@@ -56,7 +61,37 @@ function App() {
 	}, []);
 
 	if (!modelsReady) {
-		return <div>Loading editor...</div>;
+		return (
+			<>
+				<div className={`flex gap-1 ${editorDivClasses}`}>
+					<PlainEditorSkeleton />
+					<PlainEditorSkeleton />
+				</div>
+				<button
+					onClick={() =>
+						setTheme((prev) => {
+							const currentIndex = themes.indexOf(prev);
+							const nextIndex =
+								(currentIndex + 1) % themes.length;
+							return themes[nextIndex];
+						})
+					}
+					type="button"
+				>
+					Change Theme
+				</button>
+				<button
+					onClick={() =>
+						setEditorType((prev) =>
+							prev === "plain" ? "diff" : "plain",
+						)
+					}
+					type="button"
+				>
+					Toggle Plain/Diff
+				</button>
+			</>
+		);
 	}
 
 	return (
@@ -66,7 +101,6 @@ function App() {
 					<DiffEditor
 						originalModel={originalModelRef.current}
 						modifiedModel={modifiedModelRef.current}
-						theme={theme}
 						editable={false}
 						sideBySide={true}
 						diffAlgorithm="advanced"
@@ -77,12 +111,10 @@ function App() {
 				<div className={`flex gap-1 ${editorDivClasses}`}>
 					<PlainEditor
 						model={originalModelRef.current}
-						theme={theme}
 						fontSize={14}
 					/>
 					<PlainEditor
 						model={modifiedModelRef.current}
-						theme={theme}
 						fontSize={14}
 					/>
 				</div>
