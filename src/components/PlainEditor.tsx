@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import * as monaco from "monaco-editor";
-import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
-import { type MonacoTheme, DEFAULT_FONTS } from "../monaco";
+import { DEFAULT_FONTS } from "../monaco";
 import { useDropzone } from "react-dropzone";
-
-// Initialize Monaco workers
-if (!self.MonacoEnvironment) {
-	self.MonacoEnvironment = {
-		getWorker: () => new editorWorker(),
-	};
-}
 
 interface PlainEditorProps {
 	model: monaco.editor.ITextModel | null;

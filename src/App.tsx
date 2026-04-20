@@ -4,7 +4,6 @@ import DiffEditor from "./components/DiffEditor";
 import type { MonacoTheme } from "./monaco";
 import PlainEditor, { PlainEditorSkeleton } from "./components/PlainEditor";
 import * as monaco from "monaco-editor";
-import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 
 // const theme = 'vs-dark';
 const originalText = `function add(a, b) {
@@ -16,13 +15,6 @@ const modifiedText = `function add(a, b) {
 const language = "javascript";
 const themes = ["vs-dark", "light", "hc-black"] as MonacoTheme[];
 const editorDivClasses = "h-[95vh] p-1";
-
-// Initialize Monaco workers
-if (!self.MonacoEnvironment) {
-	self.MonacoEnvironment = {
-		getWorker: () => new editorWorker(),
-	};
-}
 
 function App() {
 	// console.log(monaco.languages.getLanguages());
@@ -93,7 +85,6 @@ function App() {
 			</>
 		);
 	}
-
 	return (
 		<>
 			{editorType === "diff" ? (

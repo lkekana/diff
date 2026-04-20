@@ -1,19 +1,6 @@
 import { useEffect, useRef } from "react";
 import * as monaco from "monaco-editor";
-import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
-import {
-	type LanguageID,
-	type MonacoTheme,
-	type DiffAlgorithm,
-	DEFAULT_FONTS,
-} from "../monaco";
-
-// Initialize Monaco workers
-if (!self.MonacoEnvironment) {
-	self.MonacoEnvironment = {
-		getWorker: () => new editorWorker(),
-	};
-}
+import { type DiffAlgorithm, DEFAULT_FONTS } from "../monaco";
 
 interface DiffEditorProps {
 	originalModel: monaco.editor.ITextModel | null;
