@@ -1,4 +1,9 @@
 import { ipcRenderer, contextBridge } from "electron";
+console.log("Preload script loaded");
+
+contextBridge.exposeInMainWorld('electronAPI', {
+	plus100: (n: number) => ipcRenderer.invoke('plus-100', n),
+});
 
 // --------- Expose some API to the Renderer process ---------
 contextBridge.exposeInMainWorld("ipcRenderer", {
