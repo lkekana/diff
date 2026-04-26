@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import * as monaco from "monaco-editor";
 import { type DiffAlgorithm, DEFAULT_FONTS } from "../monaco";
+import EditorDiv from "./EditorDiv";
 
 interface DiffEditorProps {
 	originalModel: monaco.editor.ITextModel | null;
@@ -32,29 +33,26 @@ export default function DiffEditor({
 		if (containerRef.current === null || initializedRef.current) return;
 		initializedRef.current = true;
 
-		const diffEditor = monaco.editor.createDiffEditor(
-			containerRef.current,
-			{
-				readOnly: !editable,
-				originalEditable: editable,
+		const diffEditor = monaco.editor.createDiffEditor(containerRef.current, {
+			readOnly: !editable,
+			originalEditable: editable,
 
-				automaticLayout: true,
-				renderSideBySide: sideBySide,
-				minimap: { enabled: true },
-				find: {
-					findOnType: true,
-					autoFindInSelection: "always",
-				},
-				scrollBeyondLastLine: false,
-				diffWordWrap: "on",
-				diffAlgorithm: diffAlgorithm,
-				diffCodeLens: true,
-				// onlyShowAccessibleDiffEditor: true,
-				//   padding: { top: 20 },
-				fontSize: fontSize,
-				fontFamily: DEFAULT_FONTS,
+			automaticLayout: true,
+			renderSideBySide: sideBySide,
+			minimap: { enabled: true },
+			find: {
+				findOnType: true,
+				autoFindInSelection: "always",
 			},
-		);
+			scrollBeyondLastLine: false,
+			diffWordWrap: "on",
+			diffAlgorithm: diffAlgorithm,
+			diffCodeLens: true,
+			// onlyShowAccessibleDiffEditor: true,
+			//   padding: { top: 20 },
+			fontSize: fontSize,
+			fontFamily: DEFAULT_FONTS,
+		});
 
 		if (originalModel !== null && modifiedModel !== null) {
 			diffEditor.setModel({
@@ -108,9 +106,10 @@ export default function DiffEditor({
 	}, [editable, sideBySide, diffAlgorithm, fontSize]);
 
 	return (
-		<div
-			ref={containerRef}
-			className={`w-screen h-full min-h-100 ${className}`}
-		/>
+		// <div
+		// 	ref={containerRef}
+		// 	className={`w-screen h-full min-h-100 ${className}`}
+		// />
+		<EditorDiv ref={containerRef} className={`w-screen ${className}`} />
 	);
 }

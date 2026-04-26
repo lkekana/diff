@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
-import "./main.css";
+import App from "./App.tsx";
+import "./index.css";
 
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker.js?worker";
 import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker.js?worker";
@@ -10,8 +10,8 @@ import htmlWorker from "monaco-editor/esm/vs/language/html/html.worker.js?worker
 import tsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker.js?worker";
 
 // Initialize Monaco workers
-if (!(window as any).MonacoEnvironment) {
-	(window as any).MonacoEnvironment = {
+if (!window.MonacoEnvironment) {
+	window.MonacoEnvironment = {
 		getWorker: (_workerId: string, label: string) => {
 			switch (label) {
 				case "json":
@@ -34,8 +34,14 @@ if (!(window as any).MonacoEnvironment) {
 	};
 }
 
-ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+// biome-ignore lint/style/noNonNullAssertion: We know the root element exists (see index.html)
+ReactDOM.createRoot(document.getElementById("root")!).render(
 	<React.StrictMode>
 		<App />
 	</React.StrictMode>,
 );
+
+// Use contextBridge
+window.ipcRenderer.on("main-process-message", (_event, message) => {
+	console.log(message);
+});
