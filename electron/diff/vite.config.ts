@@ -2,7 +2,7 @@ import { defineConfig } from "vite";
 import path from "node:path";
 import electron from "vite-plugin-electron/simple";
 import react from "@vitejs/plugin-react";
-import tailwindcss from '@tailwindcss/vite';
+import tailwindcss from "@tailwindcss/vite";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -29,4 +29,21 @@ export default defineConfig({
 		}),
 		tailwindcss(),
 	],
+	resolve: {
+		alias: {
+			// Optional: help resolve the package if needed
+			"@lkekana/language-detection": path.resolve(__dirname, "rust/language-detection"),
+		},
+	},
+	build: {
+		rollupOptions: {
+			external: [
+				"@lkekana/language-detection",
+				/\.node$/, // Never bundle native addons
+			],
+		},
+	},
+	//   optimizeDeps: {
+	// 	exclude: ['@lkekana/language-detection'], // Don't pre-bundle
+	//   },
 });

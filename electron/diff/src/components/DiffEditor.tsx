@@ -33,29 +33,26 @@ export default function DiffEditor({
 		if (containerRef.current === null || initializedRef.current) return;
 		initializedRef.current = true;
 
-		const diffEditor = monaco.editor.createDiffEditor(
-			containerRef.current,
-			{
-				readOnly: !editable,
-				originalEditable: editable,
+		const diffEditor = monaco.editor.createDiffEditor(containerRef.current, {
+			readOnly: !editable,
+			originalEditable: editable,
 
-				automaticLayout: true,
-				renderSideBySide: sideBySide,
-				minimap: { enabled: true },
-				find: {
-					findOnType: true,
-					autoFindInSelection: "always",
-				},
-				scrollBeyondLastLine: false,
-				diffWordWrap: "on",
-				diffAlgorithm: diffAlgorithm,
-				diffCodeLens: true,
-				// onlyShowAccessibleDiffEditor: true,
-				//   padding: { top: 20 },
-				fontSize: fontSize,
-				fontFamily: DEFAULT_FONTS,
+			automaticLayout: true,
+			renderSideBySide: sideBySide,
+			minimap: { enabled: true },
+			find: {
+				findOnType: true,
+				autoFindInSelection: "always",
 			},
-		);
+			scrollBeyondLastLine: false,
+			diffWordWrap: "on",
+			diffAlgorithm: diffAlgorithm,
+			diffCodeLens: true,
+			// onlyShowAccessibleDiffEditor: true,
+			//   padding: { top: 20 },
+			fontSize: fontSize,
+			fontFamily: DEFAULT_FONTS,
+		});
 
 		if (originalModel !== null && modifiedModel !== null) {
 			diffEditor.setModel({

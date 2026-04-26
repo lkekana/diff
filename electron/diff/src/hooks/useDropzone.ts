@@ -20,12 +20,7 @@ export interface UseDropzoneOptions {
 	/** Maximum number of files */
 	maxFiles?: number;
 	/** Callback when files are dropped/selected */
-	onDrop?: (
-		files: File[],
-		event:
-			| React.DragEvent<HTMLDivElement>
-			| React.ChangeEvent<HTMLInputElement>,
-	) => void;
+	onDrop?: (files: File[], event: React.DragEvent<HTMLDivElement> | React.ChangeEvent<HTMLInputElement>) => void;
 	/** Callback when a drag enters the dropzone */
 	onDragEnter?: (event: React.DragEvent<HTMLDivElement>) => void;
 	/** Callback when a drag leaves the dropzone */
@@ -61,22 +56,18 @@ export interface UseDropzoneReturn {
 	/** Open the file dialog programmatically */
 	open: () => void;
 	/** Props to spread on the root element. Note: If you need to use a ref on the root element, use the `rootRef` because this function will override the ref passed in props. */
-	getRootProps: <T extends React.HTMLAttributes<HTMLDivElement>>(
-		props?: T,
-	) => T;
+	getRootProps: <T extends React.HTMLAttributes<HTMLDivElement>>(props?: T) => T;
 	/** Props to spread on the hidden input. Note: If you need to use a ref on the input element, use the `inputRef` because this function will override the ref passed in props. */
-	getInputProps: <T extends React.InputHTMLAttributes<HTMLInputElement>>(
-		props?: T,
-	) => T;
+	getInputProps: <T extends React.InputHTMLAttributes<HTMLInputElement>>(props?: T) => T;
 }
 
 const isInteractiveElement = (target: EventTarget): boolean => {
 	if (!(target instanceof HTMLElement)) return false;
 	return (
-	  target.tagName === "BUTTON" ||
-	  target.tagName === "A" ||
-	  target.tagName === "INPUT" ||
-	  target.closest("button, a, input") !== null
+		target.tagName === "BUTTON" ||
+		target.tagName === "A" ||
+		target.tagName === "INPUT" ||
+		target.closest("button, a, input") !== null
 	);
 };
 
@@ -173,9 +164,7 @@ export const useDropzone = ({
 			// Check if dragged items contain files
 			if (dragCounter.current === 1) {
 				if (e.dataTransfer.items.length > 0) {
-					const hasFiles = Array.from(e.dataTransfer.items).some(
-						(item) => item.kind === "file",
-					);
+					const hasFiles = Array.from(e.dataTransfer.items).some((item) => item.kind === "file");
 					if (hasFiles) setIsDragActive(true);
 				}
 			}
@@ -268,7 +257,9 @@ export const useDropzone = ({
 		(e: React.MouseEvent<HTMLDivElement>) => {
 			if (disabled || !dialogOnDoubleClick || e.defaultPrevented) return;
 			if (dialogOnClick) {
-				throw new Error("Cannot use both dialogOnClick and dialogOnDoubleClick. Please choose one to avoid double dialogs.");
+				throw new Error(
+					"Cannot use both dialogOnClick and dialogOnDoubleClick. Please choose one to avoid double dialogs.",
+				);
 			}
 			// Only open if clicking the root, not a child input/button
 			const ref = rootRef.current;
@@ -285,8 +276,7 @@ export const useDropzone = ({
 
 	const handleInputChange = useCallback(
 		(e: React.ChangeEvent<HTMLInputElement>) => {
-			const files =
-				e.target.files !== null ? Array.from(e.target.files) : [];
+			const files = e.target.files !== null ? Array.from(e.target.files) : [];
 			const processedFiles = processFiles(files);
 
 			onDrop?.(processedFiles, e);
@@ -303,9 +293,7 @@ export const useDropzone = ({
 
 	// Prop getters for easy composition
 	const getRootProps = useCallback(
-		<T extends React.HTMLAttributes<HTMLDivElement>>(
-			props: T = {} as T,
-		): T => ({
+		<T extends React.HTMLAttributes<HTMLDivElement>>(props: T = {} as T): T => ({
 			...props,
 			ref: rootRef,
 			onClick: (e: React.MouseEvent<HTMLDivElement>) => {
@@ -337,26 +325,26 @@ export const useDropzone = ({
 			"aria-label": disabled
 				? "File dropzone (disabled)"
 				: isDragActive
-				? "Drop files to upload" : dialogOnDoubleClick
-					? "File dropzone. Double click or drag files to upload."
-					: "File dropzone. Click or drag files to upload.",
+					? "Drop files to upload"
+					: dialogOnDoubleClick
+						? "File dropzone. Double click or drag files to upload."
+						: "File dropzone. Click or drag files to upload.",
 		}),
 		[
-			handleRootClick, 
-			handleRootDoubleClick, 
-			handleDragEnter, 
-			handleDragOver, 
-			handleDragLeave, 
-			handleDrop, 
-			dialogOnDoubleClick, 
-			disabled, isDragActive
+			handleRootClick,
+			handleRootDoubleClick,
+			handleDragEnter,
+			handleDragOver,
+			handleDragLeave,
+			handleDrop,
+			dialogOnDoubleClick,
+			disabled,
+			isDragActive,
 		],
 	);
 
 	const getInputProps = useCallback(
-		<T extends React.InputHTMLAttributes<HTMLInputElement>>(
-			props: T = {} as T,
-		): T => ({
+		<T extends React.InputHTMLAttributes<HTMLInputElement>>(props: T = {} as T): T => ({
 			...props,
 			ref: inputRef,
 			type: "file",
