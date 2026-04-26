@@ -12,6 +12,7 @@
 	"dependencies": {
 		"@lkekana/language-detection": "link:rust/language-detection",
 		"@tailwindcss/vite": "^4.2.2",
+		"isbinaryfile": "^6.0.0",
 		"monaco-editor": "^0.55.1",
 		"react": "^18.2.0",
 		"react-dom": "^18.2.0",
