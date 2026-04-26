@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef } from "react";
 import * as monaco from "monaco-editor";
 import { DEFAULT_FONTS } from "../monaco";
-import { useDropzone } from "react-dropzone";
 import EditorDiv from "./EditorDiv";
+import { useDropzone } from "../hooks/useDropzone";
 
 interface PlainEditorProps {
 	model: monaco.editor.ITextModel | null;
 	fontSize?: number;
 	className?: string;
 	readOnly?: boolean;
+	onDrop: (files: File[]) => void;
+	overlayActiveState: [boolean, React.Dispatch<React.SetStateAction<boolean>>];
 }
 
 const OVERLAY_BASE_CLASSES = `drop-overlay w-full h-full flex items-center justify-center z-9999 text-white text-center p-4 box-border rounded-lg border border-blue-500/50 transition-opacity duration-150`;
@@ -19,9 +21,10 @@ export default function PlainEditor({
 	fontSize = 12,
 	className = "",
 	readOnly = false,
+	onDrop,
+	overlayActiveState: [overlayActiveState, setOverlayActiveState],
 }: PlainEditorProps) {
 	const id = useId();
-	const [showOverlay, setShowOverlay] = useState(true);
 	const containerRef = useRef<HTMLDivElement>(null); // no <T | null> because our usage is readonly
 	const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
 	const overlayWidgetRef = useRef<monaco.editor.IOverlayWidget | null>(null);
@@ -29,61 +32,58 @@ export default function PlainEditor({
 	const overlayMessageBoxRef = useRef<HTMLDivElement | null>(null);
 	const initializedRef = useRef(false);
 
-	const onDrop = useCallback((acceptedFiles: File[]) => {
-		// Do something with the files
-		console.log(acceptedFiles);
-	}, []);
-	const { getRootProps, getInputProps, isDragActive } = useDropzone({
-		noClick: true,
-		onDrop,
-		onDragEnter: () => setShowOverlay(true),
+	const { getRootProps, getInputProps, isDragActive, rootRef } = useDropzone({
+		dialogOnClick: false,
+		dialogOnDoubleClick: true,
+		maxFiles: 1,
+		onDrop: (files) => {
+			setOverlayActiveState(false);
+			onDrop(files);
+		},
+		onDragEnter: () => setOverlayActiveState(true),
 		onDragLeave: (e) => {
 			// Only hide if leaving the root container entirely
-			if (
-				!getRootProps().ref.current?.contains(e.relatedTarget as Node)
-			) {
-				setShowOverlay(false);
+			if (rootRef.current?.contains(e.relatedTarget as Node)) {
+				setOverlayActiveState(false);
 			}
 		},
-		onDropAccepted: () => setShowOverlay(false),
-		onDropRejected: () => setShowOverlay(false),
 	});
 
 	// Create overlay widget
-	const createOverlayWidget =
-		useCallback((): monaco.editor.IOverlayWidget => {
-			return {
-				getId: () => `plain-editor-overlay-${id}`,
-				getDomNode: () => {
-					if (overlayDivRef.current === null) {
-						overlayDivRef.current = document.createElement("div");
+	const createOverlayWidget = useCallback((): monaco.editor.IOverlayWidget => {
+		return {
+			getId: () => `plain-editor-overlay-${id}`,
+			getDomNode: () => {
+				if (overlayDivRef.current === null) {
+					overlayDivRef.current = document.createElement("div");
 
-						// overlayDivRef.current.className = `${OVERLAY_BASE_CLASSES} ${
-						// 	isDragActive
-						// 		? "backdrop-blur-sm bg-black/20"
-						// 		: "backdrop-blur-none bg-grey/50"
-						// }`;
-						overlayDivRef.current.className = `${OVERLAY_BASE_CLASSES}`;
-						overlayDivRef.current.onclick = () => {
-							setShowOverlay(false);
-							if (editorRef.current) {
-								editorRef.current.focus();
-							}
-						};
-
-						if (overlayMessageBoxRef.current === null) {
-							overlayMessageBoxRef.current = document.createElement("div");
-							overlayMessageBoxRef.current.className = MESSAGE_BOX_CLASSES;
-							overlayMessageBoxRef.current.textContent = "Start typing to get started. Or drop a file here. Or double click to find a file.";
+					// overlayDivRef.current.className = `${OVERLAY_BASE_CLASSES} ${
+					// 	isDragActive
+					// 		? "backdrop-blur-sm bg-black/20"
+					// 		: "backdrop-blur-none bg-grey/50"
+					// }`;
+					overlayDivRef.current.className = `${OVERLAY_BASE_CLASSES}`;
+					overlayDivRef.current.onclick = () => {
+						setOverlayActiveState(false);
+						if (editorRef.current) {
+							editorRef.current.focus();
 						}
+					};
 
-						overlayDivRef.current.appendChild(overlayMessageBoxRef.current);
+					if (overlayMessageBoxRef.current === null) {
+						overlayMessageBoxRef.current = document.createElement("div");
+						overlayMessageBoxRef.current.className = MESSAGE_BOX_CLASSES;
+						overlayMessageBoxRef.current.textContent =
+							"Start typing to get started. Or drop a file here. Or double click to find a file.";
 					}
-					return overlayDivRef.current;
-				},
-				getPosition: () => null,
-			};
-		}, [id]);
+
+					overlayDivRef.current.appendChild(overlayMessageBoxRef.current);
+				}
+				return overlayDivRef.current;
+			},
+			getPosition: () => null,
+		};
+	}, [id, setOverlayActiveState]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Run once on mount
 	useEffect(() => {
@@ -115,8 +115,8 @@ export default function PlainEditor({
 		overlayWidgetRef.current = createOverlayWidget();
 
 		// Show overlay if either internal state or drag state indicates it should be visible
-		const shouldShowOverlay = showOverlay || isDragActive;
-		if (shouldShowOverlay && overlayWidgetRef.current !== null) {
+		const shouldoverlayActiveState = overlayActiveState || isDragActive;
+		if (shouldoverlayActiveState && overlayWidgetRef.current !== null) {
 			editor.addOverlayWidget(overlayWidgetRef.current);
 			editor.layout();
 		}
@@ -144,7 +144,7 @@ export default function PlainEditor({
 		};
 	}, []);
 
-	// Toggle overlay visibility based on drag state and internal showOverlay state
+	// Toggle overlay visibility based on drag state and internal overlayActiveState state
 	useEffect(() => {
 		const editor = editorRef.current;
 		const widget = overlayWidgetRef.current;
@@ -152,14 +152,14 @@ export default function PlainEditor({
 		const messageBox = overlayMessageBoxRef.current;
 		if (editor === null || widget === null || overlayDiv === null || messageBox === null) return;
 
-		const shouldShowOverlay = showOverlay || isDragActive;
+		const shouldoverlayActiveState = overlayActiveState || isDragActive;
 
-		if (shouldShowOverlay) {
+		if (shouldoverlayActiveState) {
 			// Update overlay text based on state
 			messageBox.textContent = isDragActive
 				? "📁 Drop file here to load"
 				: "Start typing to get started. Or drop a file here. Or double click to find a file.";
-			
+
 			overlayDiv.className = `${OVERLAY_BASE_CLASSES} ${
 				isDragActive ? "backdrop-blur-sm bg-black/20" : "backdrop-blur-none bg-grey/50"
 			}`;
@@ -174,7 +174,7 @@ export default function PlainEditor({
 		}
 
 		editor.layout();
-	}, [showOverlay, isDragActive]);
+	}, [overlayActiveState, isDragActive]);
 
 	// Sync model
 	useEffect(() => {
@@ -195,10 +195,7 @@ export default function PlainEditor({
 	}, [fontSize, readOnly]);
 
 	return (
-		<div
-			{...getRootProps()}
-			className="flex items-center justify-center w-full h-full min-h-100 min-w-0"
-		>
+		<div {...getRootProps()} className="flex items-center justify-center w-full h-full min-h-100 min-w-0">
 			<input {...getInputProps()} />
 			<EditorDiv ref={containerRef} className={`${className}`} />
 		</div>
@@ -206,7 +203,5 @@ export default function PlainEditor({
 }
 
 export function PlainEditorSkeleton() {
-	return (
-		<div className="monaco-editor w-full h-full min-h-100" />
-	);
+	return <div className="monaco-editor w-full h-full min-h-100" />;
 }
