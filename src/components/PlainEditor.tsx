@@ -160,7 +160,7 @@ export default function PlainEditor({
 		const messageBox = overlayMessageBoxRef.current;
 		if (editor === null || widget === null || overlayDiv === null || messageBox === null) return;
 
-		const isLightTheme = activeTheme === "light" as MonacoTheme;
+		const isLightTheme = activeTheme === ("light" as MonacoTheme);
 
 		const shouldShowOverlay = overlayActiveState || isDragActive;
 
@@ -174,7 +174,7 @@ export default function PlainEditor({
 			const themeMessageClasses = isLightTheme ? MESSAGE_BOX_LIGHT_CLASSES : MESSAGE_BOX_DARK_CLASSES;
 
 			// Determine State Classes (Drag vs Idle)
-            // You might want different opacity/blur when actively dragging vs just idle overlay
+			// You might want different opacity/blur when actively dragging vs just idle overlay
 			const stateClasses = isDragActive ? "backdrop-blur-sm bg-opacity-80" : "backdrop-blur-none bg-opacity-50";
 
 			// overlayDiv.className = `${OVERLAY_BASE_CLASSES} ${
@@ -182,7 +182,7 @@ export default function PlainEditor({
 			// }`;
 
 			overlayDiv.className = `${OVERLAY_BASE_CLASSES} ${themeOverlayClasses} ${stateClasses}`;
-            messageBox.className = `${MESSAGE_BOX_BASE_CLASSES} ${themeMessageClasses}`;
+			messageBox.className = `${MESSAGE_BOX_BASE_CLASSES} ${themeMessageClasses}`;
 
 			// editor.removeOverlayWidget(widget);
 			// editor.addOverlayWidget(widget);

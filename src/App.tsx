@@ -170,6 +170,14 @@ function App() {
 		}
 	}, [modifiedState]);
 
+	useEffect(() => {
+		if (!originalFileOverlayActive && !modifiedFileOverlayActive) {
+			if (editorType !== "diff") setEditorType("diff");
+		} else {
+			if (editorType !== "plain") setEditorType("plain");
+		}
+	}, [originalFileOverlayActive, modifiedFileOverlayActive, editorType]);
+
 	// Setup Monaco models on mount and cleanup on unmount
 	useEffect(() => {
 		let isMounted = true;
@@ -197,28 +205,32 @@ function App() {
 					console.error(
 						`Default original file at ${defaultOriginalPath} is binary. Content cannot be loaded into editor.`,
 					);
-					throw new Error("Default files cannot be binary");
+					throw new Error(`Default original file at ${defaultOriginalPath} is binary`);
 				}
 
 				if (defaultOriginal.content === undefined) {
 					console.error(
 						`Default original file at ${defaultOriginalPath} cannot be loaded. No content found.`,
 					);
-					throw new Error("Default original file content is undefined");
+					throw new Error(
+						`Default original file at ${defaultOriginalPath} cannot be loaded. No content found.`,
+					);
 				}
 
 				if (defaultModified.isBinary) {
 					console.error(
 						`Default modified file at ${defaultModifiedPath} is binary. Content cannot be loaded into editor.`,
 					);
-					throw new Error("Default files cannot be binary");
+					throw new Error(`Default modified file at ${defaultModifiedPath} is binary`);
 				}
 
 				if (defaultModified.content === undefined) {
 					console.error(
 						`Default modified file at ${defaultModifiedPath} cannot be loaded. No content found.`,
 					);
-					throw new Error("Default modified file content is undefined");
+					throw new Error(
+						`Default modified file at ${defaultModifiedPath} cannot be loaded. No content found.`,
+					);
 				}
 
 				const originalModel = monaco.editor.createModel(defaultOriginal.content, initialLanguage);
