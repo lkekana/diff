@@ -234,12 +234,14 @@ function App() {
 							fontSize={fontSize}
 							onDrop={(files) => onFileDrop(files, setOriginalState)}
 							overlayActiveState={[originalFileOverlayActive, setOriginalFileOverlayActive]}
+							activeTheme={theme}
 						/>
 						<PlainEditor
 							model={modifiedModelRef.current}
 							fontSize={fontSize}
 							onDrop={(files) => onFileDrop(files, setModifiedState)}
 							overlayActiveState={[modifiedFileOverlayActive, setModifiedFileOverlayActive]}
+							activeTheme={theme}
 						/>
 					</div>
 				)}

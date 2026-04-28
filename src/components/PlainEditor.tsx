@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useId, useRef } from "react";
 import * as monaco from "monaco-editor";
-import { DEFAULT_FONTS } from "../monaco";
+import { DEFAULT_FONTS, MonacoTheme } from "../monaco";
 import EditorDiv from "./EditorDiv";
 import { useDropzone } from "../hooks/useDropzone";
 
 interface PlainEditorProps {
 	model: monaco.editor.ITextModel | null;
+	activeTheme: MonacoTheme;
 	fontSize?: number;
 	className?: string;
 	readOnly?: boolean;
@@ -13,11 +14,17 @@ interface PlainEditorProps {
 	overlayActiveState: [boolean, React.Dispatch<React.SetStateAction<boolean>>];
 }
 
-const OVERLAY_BASE_CLASSES = `drop-overlay w-full h-full flex items-center justify-center z-9999 text-white text-center p-4 box-border rounded-lg border border-blue-500/50 transition-opacity duration-150`;
-const MESSAGE_BOX_CLASSES = `bg-white/10 p-5 rounded-lg border-2 border-dashed border-white/50 pointer-events-none text-lg`;
+const OVERLAY_BASE_CLASSES = `drop-overlay w-full h-full flex items-center justify-center z-9999 text-center p-4 box-border rounded-lg border border-blue-500/50 transition-opacity duration-150`;
+const OVERLAY_DARK_CLASSES = `bg-black/20 border-blue-500/50 text-white`;
+const OVERLAY_LIGHT_CLASSES = `bg-white/60 border-gray-300 text-gray-800`;
+
+const MESSAGE_BOX_BASE_CLASSES = `p-5 rounded-lg border-2 border-dashed pointer-events-none text-lg`;
+const MESSAGE_BOX_DARK_CLASSES = `bg-white/10 border-white/50 text-white`;
+const MESSAGE_BOX_LIGHT_CLASSES = `bg-black/5 border-gray-400/50 text-gray-800`;
 
 export default function PlainEditor({
 	model,
+	activeTheme,
 	fontSize = 12,
 	className = "",
 	readOnly = false,
@@ -72,7 +79,8 @@ export default function PlainEditor({
 
 					if (overlayMessageBoxRef.current === null) {
 						overlayMessageBoxRef.current = document.createElement("div");
-						overlayMessageBoxRef.current.className = MESSAGE_BOX_CLASSES;
+						// overlayMessageBoxRef.current.className = MESSAGE_BOX_CLASSES;
+						overlayMessageBoxRef.current.className = `${MESSAGE_BOX_BASE_CLASSES}`;
 						overlayMessageBoxRef.current.textContent =
 							"Start typing to get started. Or drop a file here. Or double click to find a file.";
 					}
@@ -115,8 +123,8 @@ export default function PlainEditor({
 		overlayWidgetRef.current = createOverlayWidget();
 
 		// Show overlay if either internal state or drag state indicates it should be visible
-		const shouldoverlayActiveState = overlayActiveState || isDragActive;
-		if (shouldoverlayActiveState && overlayWidgetRef.current !== null) {
+		const shouldShowOverlay = overlayActiveState || isDragActive;
+		if (shouldShowOverlay && overlayWidgetRef.current !== null) {
 			editor.addOverlayWidget(overlayWidgetRef.current);
 			editor.layout();
 		}
@@ -152,17 +160,29 @@ export default function PlainEditor({
 		const messageBox = overlayMessageBoxRef.current;
 		if (editor === null || widget === null || overlayDiv === null || messageBox === null) return;
 
-		const shouldoverlayActiveState = overlayActiveState || isDragActive;
+		const isLightTheme = activeTheme === "light" as MonacoTheme;
 
-		if (shouldoverlayActiveState) {
+		const shouldShowOverlay = overlayActiveState || isDragActive;
+
+		if (shouldShowOverlay) {
 			// Update overlay text based on state
 			messageBox.textContent = isDragActive
 				? "📁 Drop file here to load"
 				: "Start typing to get started. Or drop a file here. Or double click to find a file.";
 
-			overlayDiv.className = `${OVERLAY_BASE_CLASSES} ${
-				isDragActive ? "backdrop-blur-sm bg-black/20" : "backdrop-blur-none bg-grey/50"
-			}`;
+			const themeOverlayClasses = isLightTheme ? OVERLAY_LIGHT_CLASSES : OVERLAY_DARK_CLASSES;
+			const themeMessageClasses = isLightTheme ? MESSAGE_BOX_LIGHT_CLASSES : MESSAGE_BOX_DARK_CLASSES;
+
+			// Determine State Classes (Drag vs Idle)
+            // You might want different opacity/blur when actively dragging vs just idle overlay
+			const stateClasses = isDragActive ? "backdrop-blur-sm bg-opacity-80" : "backdrop-blur-none bg-opacity-50";
+
+			// overlayDiv.className = `${OVERLAY_BASE_CLASSES} ${
+			// 	isDragActive ? "backdrop-blur-sm bg-black/20" : "backdrop-blur-none bg-grey/50"
+			// }`;
+
+			overlayDiv.className = `${OVERLAY_BASE_CLASSES} ${themeOverlayClasses} ${stateClasses}`;
+            messageBox.className = `${MESSAGE_BOX_BASE_CLASSES} ${themeMessageClasses}`;
 
 			// editor.removeOverlayWidget(widget);
 			// editor.addOverlayWidget(widget);
@@ -174,7 +194,7 @@ export default function PlainEditor({
 		}
 
 		editor.layout();
-	}, [overlayActiveState, isDragActive]);
+	}, [overlayActiveState, isDragActive, activeTheme]);
 
 	// Sync model
 	useEffect(() => {
