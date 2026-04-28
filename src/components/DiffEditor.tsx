@@ -110,6 +110,6 @@ export default function DiffEditor({
 		// 	ref={containerRef}
 		// 	className={`w-screen h-full min-h-100 ${className}`}
 		// />
-		<EditorDiv ref={containerRef} className={`w-screen ${className}`} />
+		<EditorDiv ref={containerRef} className={`w-full h-full ${className}`} />
 	);
 }

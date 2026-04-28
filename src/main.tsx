@@ -34,7 +34,6 @@ if (!window.MonacoEnvironment) {
 	};
 }
 
-// biome-ignore lint/style/noNonNullAssertion: We know the root element exists (see index.html)
 ReactDOM.createRoot(document.getElementById("root")!).render(
 	<React.StrictMode>
 		<App />

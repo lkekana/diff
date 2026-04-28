@@ -8,7 +8,6 @@ import type * as React from "react";
 // const theme = 'vs-dark';
 const initialLanguage = "typescript";
 const themes = ["vs-dark", "light", "hc-black"] as MonacoTheme[];
-const editorDivClasses = "h-[60vh] p-1";
 
 type TextState = {
 	text: string;
@@ -18,9 +17,12 @@ type TextState = {
 	};
 };
 
+const fontSize = 12;
+
 function App() {
 	// console.log(monaco.languages.getLanguages());
 	const [theme, setTheme] = useState<MonacoTheme>("vs-dark");
+	const [buttonColors, setButtonColors] = useState("bg-gray-700 hover:bg-gray-600");
 	const [modelsReady, setModelsReady] = useState(false);
 	const [editorType, setEditorType] = useState<"plain" | "diff">("plain");
 	const originalModelRef = useRef<monaco.editor.ITextModel | null>(null);
@@ -28,8 +30,9 @@ function App() {
 	const [originalState, setOriginalState] = useState<TextState | null>(null);
 	const [modifiedState, setModifiedState] = useState<TextState | null>(null);
 	const [language, setLanguage] = useState(initialLanguage);
-	const [originalFileOverlayActive, setOriginalFileOverlayActive] = useState(false);
-	const [modifiedFileOverlayActive, setModifiedFileOverlayActive] = useState(false);
+	const [originalFileOverlayActive, setOriginalFileOverlayActive] = useState(true);
+	const [modifiedFileOverlayActive, setModifiedFileOverlayActive] = useState(true);
+	const [sideBySide, setSideBySide] = useState(true);
 
 	const onFileDrop = (files: File[], setState: (value: React.SetStateAction<TextState | null>) => void) => {
 		// console.log("onFileDrop called with files:", files, "Event:", event);
@@ -70,7 +73,25 @@ function App() {
 	// Sync theme with Monaco
 	useEffect(() => {
 		monaco.editor.setTheme(theme);
+		if (theme === ("light" as MonacoTheme)) {
+			setButtonColors("bg-gray-300 hover:bg-gray-200");
+		} else {
+			setButtonColors("bg-gray-700 hover:bg-gray-600");
+		}
 	}, [theme]);
+
+	useEffect(() => {
+		if (originalModelRef.current) {
+			if (originalModelRef.current.getLanguageId() !== language) {
+				monaco.editor.setModelLanguage(originalModelRef.current, language);
+			}
+		}
+		if (modifiedModelRef.current) {
+			if (modifiedModelRef.current.getLanguageId() !== language) {
+				monaco.editor.setModelLanguage(modifiedModelRef.current, language);
+			}
+		}
+	}, [language]);
 
 	// Sync models with state (for file loading)
 	useEffect(() => {
@@ -184,13 +205,48 @@ function App() {
 		};
 	}, []);
 
-	if (!modelsReady) {
-		return (
-			<>
-				<div className={`flex gap-1 ${editorDivClasses}`}>
-					<PlainEditorSkeleton />
-					<PlainEditorSkeleton />
-				</div>
+	// print window dimensions
+	console.log(`Window dimensions: ${window.innerWidth}x${window.innerHeight}`);
+
+	return (
+		<div className="monaco-editor flex flex-col h-screen w-screen overflow-hidden p-1 bg-gray-900 text-white">
+			{/* <h1 className="text-2xl mb-2">Language: {language}</h1> */}
+			<div className="flex-1 min-h-0 w-full relative">
+				{!modelsReady ? (
+					<div className="w-full h-full">
+						<PlainEditorSkeleton />
+					</div>
+				) : editorType === "diff" ? (
+					<div className="w-full h-full">
+						<DiffEditor
+							originalModel={originalModelRef.current}
+							modifiedModel={modifiedModelRef.current}
+							editable={false}
+							sideBySide={sideBySide}
+							diffAlgorithm="advanced"
+							fontSize={fontSize}
+						/>
+					</div>
+				) : (
+					<div className="flex gap-1 w-full h-full">
+						<PlainEditor
+							model={originalModelRef.current}
+							fontSize={fontSize}
+							onDrop={(files) => onFileDrop(files, setOriginalState)}
+							overlayActiveState={[originalFileOverlayActive, setOriginalFileOverlayActive]}
+						/>
+						<PlainEditor
+							model={modifiedModelRef.current}
+							fontSize={fontSize}
+							onDrop={(files) => onFileDrop(files, setModifiedState)}
+							overlayActiveState={[modifiedFileOverlayActive, setModifiedFileOverlayActive]}
+						/>
+					</div>
+				)}
+			</div>
+			<div
+				className={`flex items-center gap-2 p-2 rounded mt-1 shrink-0 ${theme === ("light" as MonacoTheme) ? "bg-gray-200" : "bg-gray-800"}`}
+			>
 				<button
 					onClick={() =>
 						setTheme((prev) => {
@@ -200,67 +256,36 @@ function App() {
 						})
 					}
 					type="button"
+					className={`px-3 py-1 rounded text-sm ${buttonColors}`}
 				>
 					Change Theme
 				</button>
-				<button onClick={() => setEditorType((prev) => (prev === "plain" ? "diff" : "plain"))} type="button">
+				<button
+					onClick={() => setEditorType((prev) => (prev === "plain" ? "diff" : "plain"))}
+					type="button"
+					className={`px-3 py-1 rounded text-sm ${buttonColors}`}
+				>
 					Toggle Plain/Diff
 				</button>
-			</>
-		);
-	}
-	return (
-		<div className="monaco-editor size-full p-1">
-			<h1 className="text-2xl mb-2">Language: {language}</h1>
-			{editorType === "diff" ? (
-				<div className={`${editorDivClasses}`}>
-					<DiffEditor
-						originalModel={originalModelRef.current}
-						modifiedModel={modifiedModelRef.current}
-						editable={false}
-						sideBySide={true}
-						diffAlgorithm="advanced"
-						fontSize={14}
-					/>
-				</div>
-			) : (
-				<div className={`flex gap-1 w-screen ${editorDivClasses}`}>
-					<PlainEditor
-						model={originalModelRef.current}
-						fontSize={14}
-						onDrop={(files) => onFileDrop(files, setOriginalState)}
-						overlayActiveState={[originalFileOverlayActive, setOriginalFileOverlayActive]}
-					/>
-					<PlainEditor
-						model={modifiedModelRef.current}
-						fontSize={14}
-						onDrop={(files) => onFileDrop(files, setModifiedState)}
-						overlayActiveState={[modifiedFileOverlayActive, setModifiedFileOverlayActive]}
-					/>
-				</div>
-			)}
-			<button
-				onClick={() =>
-					setTheme((prev) => {
-						const currentIndex = themes.indexOf(prev);
-						const nextIndex = (currentIndex + 1) % themes.length;
-						return themes[nextIndex];
-					})
-				}
-				type="button"
-			>
-				Change Theme
-			</button>
-			<button onClick={() => setEditorType((prev) => (prev === "plain" ? "diff" : "plain"))} type="button">
-				Toggle Plain/Diff
-			</button>
-			<select value={language} onChange={(e) => setLanguage(e.target.value)} className="ml-2">
-				{monaco.languages.getLanguages().map((lang) => (
-					<option key={lang.id} value={lang.id}>
-						{lang.aliases && lang.aliases.length > 0 ? lang.aliases[0] : lang.id}
-					</option>
-				))}
-			</select>
+				<button
+					onClick={() => setSideBySide((prev) => !prev)}
+					type="button"
+					className={`px-3 py-1 rounded text-sm ${buttonColors}`}
+				>
+					Toggle Side-by-Side
+				</button>
+				<select
+					value={language}
+					onChange={(e) => setLanguage(e.target.value)}
+					className={`ml-2 px-2 py-1 rounded text-sm border-none outline-none ${buttonColors}`}
+				>
+					{monaco.languages.getLanguages().map((lang) => (
+						<option key={lang.id} value={lang.id}>
+							{lang.aliases && lang.aliases.length > 0 ? lang.aliases[0] : lang.id}
+						</option>
+					))}
+				</select>
+			</div>
 		</div>
 	);
 }

@@ -195,7 +195,7 @@ export default function PlainEditor({
 	}, [fontSize, readOnly]);
 
 	return (
-		<div {...getRootProps()} className="flex items-center justify-center w-full h-full min-h-100 min-w-0">
+		<div {...getRootProps()} className="flex items-center justify-center w-full h-full min-w-0 flex-1">
 			<input {...getInputProps()} />
 			<EditorDiv ref={containerRef} className={`${className}`} />
 		</div>
