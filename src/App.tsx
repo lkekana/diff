@@ -5,6 +5,61 @@ import PlainEditor, { PlainEditorSkeleton } from "./components/PlainEditor";
 import * as monaco from "monaco-editor";
 import type * as React from "react";
 
+const PaletteIcon = () => (
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+	>
+		<circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+		<circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+		<circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+		<circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+		<path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"></path>
+	</svg>
+);
+
+const SplitViewIcon = () => (
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+	>
+		<rect x="2" y="3" width="20" height="18" rx="2" ry="2"></rect>
+		<line x1="12" y1="3" x2="12" y2="21"></line>
+	</svg>
+);
+
+const SingleViewIcon = () => (
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+	>
+		<rect x="2" y="3" width="20" height="18" rx="2" ry="2"></rect>
+	</svg>
+);
+
+const TOGGLE_EDITOR_ENABLED = false;
+
 // const theme = 'vs-dark';
 const initialLanguage = "typescript";
 const themes = ["vs-dark", "light", "hc-black"] as MonacoTheme[];
@@ -80,6 +135,7 @@ function App() {
 		}
 	}, [theme]);
 
+	// Sync language changes with Monaco models
 	useEffect(() => {
 		if (originalModelRef.current) {
 			if (originalModelRef.current.getLanguageId() !== language) {
@@ -185,7 +241,6 @@ function App() {
 				}
 			} catch (error) {
 				console.error("Failed to setup Monaco models:", error);
-				// Optional: handle error state here
 			}
 		};
 		setupModels();
@@ -247,7 +302,7 @@ function App() {
 				)}
 			</div>
 			<div
-				className={`flex items-center gap-2 p-2 rounded mt-1 shrink-0 ${theme === ("light" as MonacoTheme) ? "bg-gray-200" : "bg-gray-800"}`}
+				className={`flex items-center justify-end-safe gap-2 p-2 rounded mt-1 shrink-0 ${theme === ("light" as MonacoTheme) ? "bg-gray-200" : "bg-gray-800"}`}
 			>
 				<button
 					onClick={() =>
@@ -258,24 +313,32 @@ function App() {
 						})
 					}
 					type="button"
-					className={`px-3 py-1 rounded text-sm ${buttonColors}`}
+					className={`px-3 py-1 rounded text-sm flex items-center gap-2 ${buttonColors}`}
 				>
-					Change Theme
+					<PaletteIcon />
+					<span className="hidden sm:inline">Theme</span>
 				</button>
-				<button
-					onClick={() => setEditorType((prev) => (prev === "plain" ? "diff" : "plain"))}
-					type="button"
-					className={`px-3 py-1 rounded text-sm ${buttonColors}`}
-				>
-					Toggle Plain/Diff
-				</button>
-				<button
-					onClick={() => setSideBySide((prev) => !prev)}
-					type="button"
-					className={`px-3 py-1 rounded text-sm ${buttonColors}`}
-				>
-					Toggle Side-by-Side
-				</button>
+
+				{TOGGLE_EDITOR_ENABLED && (
+					<button
+						onClick={() => setEditorType((prev) => (prev === "plain" ? "diff" : "plain"))}
+						type="button"
+						className={`px-3 py-1 rounded text-sm ${buttonColors}`}
+					>
+						Toggle Plain/Diff
+					</button>
+				)}
+				{editorType === "diff" && (
+					<button
+						onClick={() => setSideBySide((prev) => !prev)}
+						type="button"
+						className={`px-3 py-1 rounded text-sm flex items-center gap-2 ${buttonColors}`}
+						title={sideBySide ? "Switch to Unified View" : "Switch to Side-by-Side View"}
+					>
+						{sideBySide ? <SplitViewIcon /> : <SingleViewIcon />}
+						<span className="hidden sm:inline">{sideBySide ? "Split" : "Unified"}</span>
+					</button>
+				)}
 				<select
 					value={language}
 					onChange={(e) => setLanguage(e.target.value)}
