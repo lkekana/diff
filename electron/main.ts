@@ -60,6 +60,10 @@ function createWindow() {
 			contextIsolation: true,
 			nodeIntegration: false,
 		},
+		width: 900,
+		height: 675,
+		minWidth: 800,
+		minHeight: 600,
 	});
 
 	// Test active push message to Renderer-process.
