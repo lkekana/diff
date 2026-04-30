@@ -54,7 +54,7 @@
 				"noUnsafeDeclarationMerging": "error"
 			}
 		},
-		"includes": ["**", "**/dist", "**/.eslintrc.cjs"]
+		"includes": ["**", "**/dist"]
 	},
 	"javascript": {
 		"formatter": {
