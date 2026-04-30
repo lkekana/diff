@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef } from "react";
 import * as monaco from "monaco-editor";
 import { DEFAULT_FONTS, MonacoTheme } from "../monaco";
 import EditorDiv from "./EditorDiv";
-import { useDropzone } from "../hooks/useDropzone";
+import { useDropzone } from "@lkekana/dropzone";
 
 interface PlainEditorProps {
 	model: monaco.editor.ITextModel | null;
