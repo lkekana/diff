@@ -39,6 +39,8 @@ export default function DiffEditor({
 
 			automaticLayout: true,
 			renderSideBySide: sideBySide,
+			useInlineViewWhenSpaceIsLimited: false,
+
 			minimap: { enabled: true },
 			find: {
 				findOnType: true,
