@@ -28,9 +28,9 @@ export const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 export const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 const languageDetection = require("@lkekana/language-detection");
-import { plus100, detectLanguage } from "@lkekana/language-detection";
 
 export const appFolder = path.join(app.getPath("appData"), appID);
+export const defaultFilesFolder = path.join(appFolder, "default");
 export const tempFolder = path.join(app.getPath("appData"), appID, "tmp");
 // console.log("Temp folder path:", tempFolder);
 
@@ -38,11 +38,34 @@ export const tempFolder = path.join(app.getPath("appData"), appID, "tmp");
 async function createDefaultFiles() {
 	const originalText = `function add(a, b) {\n\treturn a - b;\n}`;
 	const modifiedText = `function add(a, b) {\n\treturn a + b; // Should've been addition\n}`;
-	await fsAsync.mkdir(tempFolder, { recursive: true });
-	await Promise.all([
-		fsAsync.writeFile(path.join(tempFolder, "original.ts"), originalText, "utf-8"),
-		fsAsync.writeFile(path.join(tempFolder, "modified.ts"), modifiedText, "utf-8"),
-	]);
+	await fsAsync.mkdir(defaultFilesFolder, { recursive: true });
+
+	const files = [
+		{ path: path.join(defaultFilesFolder, "original.ts"), content: originalText },
+		{ path: path.join(defaultFilesFolder, "modified.ts"), content: modifiedText },
+	];
+
+	await Promise.allSettled(
+		files.map(async (file) => {
+		  try {
+			// 'wx' = write, fail if exists
+			await fsAsync.writeFile(file.path, file.content, { encoding: "utf-8", flag: "wx" });
+			console.log(`✓ Created ${path.basename(file.path)}`);
+		  } catch (err) {
+			if (err instanceof Error && "code" in err) {
+				if (err.code === "EEXIST") {
+				console.log(`✓ ${path.basename(file.path)} already exists, skipping...`);
+				} else {
+				throw err; // Re-throw unexpected errors
+				}
+			}
+			else {
+				console.error(`Failed to create ${path.basename(file.path)}:`, err);
+				throw err;
+			}
+		  }
+		})
+	  );
 }
 createDefaultFiles().catch((error) => {
 	console.error("Failed to create default files:", error);
