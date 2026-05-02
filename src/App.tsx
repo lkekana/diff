@@ -97,6 +97,24 @@ const CloseIcon = () => (
 	</svg>
 );
 
+// Lucide: loader-circle
+const LoadingIcon = () => (
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		// class="lucide lucide-loader-circle-icon lucide-loader-circle"
+	>
+		<path d="M21 12a9 9 0 1 1-6.219-8.56" />
+	</svg>
+);
+
 const TOGGLE_EDITOR_ENABLED = false;
 
 // const theme = 'vs-dark';
@@ -145,6 +163,11 @@ function App() {
 	const [modifiedFileOverlayActive, setModifiedFileOverlayActive] = useState(true);
 	const [sideBySide, setSideBySide] = useState(true);
 	const isMountedRef = useRef(true);
+	const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+
+	console.log("isLoadingFiles:", isLoadingFiles);
+
+	const anyFileLoaded = !originalFileOverlayActive || !modifiedFileOverlayActive;
 
 	const setupModels = useCallback(async () => {
 		let originalTextContent = originalDefaultText;
@@ -165,8 +188,7 @@ function App() {
 				console.error(
 					`Default original file at ${defaultOriginalPath} is invalid. ${defaultOriginal.isBinary ? "File is binary." : "No content found."} Content cannot be loaded into editor.`,
 				);
-			}
-			else {
+			} else {
 				originalTextContent = defaultOriginal.content;
 			}
 
@@ -174,8 +196,7 @@ function App() {
 				console.error(
 					`Default modified file at ${defaultModifiedPath} is invalid. ${defaultModified.isBinary ? "File is binary." : "No content found."} Content cannot be loaded into editor.`,
 				);
-			}
-			else {
+			} else {
 				modifiedTextContent = defaultModified.content;
 			}
 		} catch (error) {
@@ -205,6 +226,7 @@ function App() {
 	const reloadDefaultModels = useCallback(async () => {
 		const oldOriginalModel = originalModelRef.current;
 		const oldModifiedModel = modifiedModelRef.current;
+		setIsLoadingFiles(true);
 
 		// Reset state
 		setModelsReady(false);
@@ -226,7 +248,13 @@ function App() {
 			}
 		}, 0); // Run timeout at the end of the event loop to allow state to reset before creating new models
 
-		await setupModels();
+		try {
+			await setupModels();
+		} catch (error) {
+			console.error("Failed to reload default models:", error);
+		} finally {
+			setIsLoadingFiles(false);
+		}
 	}, [setupModels]);
 
 	const onFileDrop = (files: File[], setState: (value: React.SetStateAction<TextState | null>) => void) => {
@@ -440,15 +468,21 @@ function App() {
 							</option>
 						))}
 					</select>
-				{	!(originalFileOverlayActive	&& modifiedFileOverlayActive) &&
 					<button
 						onClick={reloadDefaultModels}
+						disabled={isLoadingFiles || !anyFileLoaded}
 						type="button"
-						className={`px-3 py-1 rounded text-sm flex items-center gap-2 ${buttonColors}`}
-						title="Close Files"
+						className={`px-3 py-1 rounded text-sm flex items-center gap-2 ${isLoadingFiles || !anyFileLoaded ? "opacity-50" : ""} ${isLoadingFiles ? "cursor-wait" : ""} ${buttonColors}`}
+						title={isLoadingFiles ? "Reloading..." : "Close Files"}
 					>
-						<CloseIcon />
-					</button>}
+						{isLoadingFiles ? (
+							<span className="animate-spin">
+								<LoadingIcon />
+							</span>
+						) : (
+							<CloseIcon />
+						)}
+					</button>
 				</div>
 			</div>
 		</div>
