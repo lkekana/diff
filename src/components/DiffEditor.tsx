@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
-import * as monaco from "monaco-editor";
+import { editor } from "monaco-editor";
 import { type DiffAlgorithm, DEFAULT_FONTS } from "../monaco";
 import EditorDiv from "./EditorDiv";
 
 interface DiffEditorProps {
-	originalModel: monaco.editor.ITextModel | null;
-	modifiedModel: monaco.editor.ITextModel | null;
+	originalModel: editor.ITextModel | null;
+	modifiedModel: editor.ITextModel | null;
 	editable?: boolean;
 	sideBySide?: boolean;
 	diffAlgorithm?: DiffAlgorithm;
@@ -22,10 +22,8 @@ export default function DiffEditor({
 	fontSize = 12,
 	className = "",
 }: DiffEditorProps) {
-	// console.log(`Theme: ${theme}, Editable: ${editable}, SideBySide: ${sideBySide}, DiffAlgorithm: ${diffAlgorithm}, FontSize: ${fontSize}`);
-
 	const containerRef = useRef<HTMLDivElement>(null);
-	const editorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(null);
+	const editorRef = useRef<editor.IStandaloneDiffEditor | null>(null);
 	const initializedRef = useRef(false);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: We only want to run this once on mount
@@ -33,7 +31,7 @@ export default function DiffEditor({
 		if (containerRef.current === null || initializedRef.current) return;
 		initializedRef.current = true;
 
-		const diffEditor = monaco.editor.createDiffEditor(containerRef.current, {
+		const diffEditor = editor.createDiffEditor(containerRef.current, {
 			readOnly: !editable,
 			originalEditable: editable,
 

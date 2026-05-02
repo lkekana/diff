@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import DiffEditor from "./components/DiffEditor";
 import { isLanguageID, type MonacoTheme } from "./monaco";
 import PlainEditor, { PlainEditorSkeleton } from "./components/PlainEditor";
@@ -100,18 +100,35 @@ const CloseIcon = () => (
 const TOGGLE_EDITOR_ENABLED = false;
 
 // const theme = 'vs-dark';
+const fontSize = 12;
+const originalDefaultText = `function add(a, b) {\n\treturn a - b;\n}`;
+const modifiedDefaultText = `function add(a, b) {\n\treturn a + b; // Should've been addition\n}`;
+
 const initialLanguage = "typescript";
 const themes = ["vs-dark", "light", "hc-black"] as MonacoTheme[];
 
 type TextState = {
 	text: string;
 	file: {
-		path: string;
+		path?: string;
 		loadedText: string;
 	};
 };
 
-const fontSize = 12;
+const getDefaultPaths = async (): Promise<{ original: string; modified: string }> => {
+	try {
+		const appFolder = await window.electronAPI.getAppFolder();
+		const defaultFilesFolder = await window.electronAPI.joinPaths(appFolder, "default");
+		const [defaultOriginalPath, defaultModifiedPath] = await Promise.all([
+			window.electronAPI.joinPaths(defaultFilesFolder, "original.ts"),
+			window.electronAPI.joinPaths(defaultFilesFolder, "modified.ts"),
+		]);
+		return { original: defaultOriginalPath, modified: defaultModifiedPath };
+	} catch (error) {
+		console.error("Failed to get default file paths:", error);
+		throw error;
+	}
+};
 
 function App() {
 	// console.log(languages.getLanguages());
@@ -127,6 +144,90 @@ function App() {
 	const [originalFileOverlayActive, setOriginalFileOverlayActive] = useState(true);
 	const [modifiedFileOverlayActive, setModifiedFileOverlayActive] = useState(true);
 	const [sideBySide, setSideBySide] = useState(true);
+	const isMountedRef = useRef(true);
+
+	const setupModels = useCallback(async () => {
+		let originalTextContent = originalDefaultText;
+		let defaultOriginalPath: string | undefined = undefined;
+		let modifiedTextContent = modifiedDefaultText;
+		let defaultModifiedPath: string | undefined = undefined;
+		try {
+			const { original, modified } = await getDefaultPaths();
+			defaultOriginalPath = original;
+			defaultModifiedPath = modified;
+
+			const [defaultOriginal, defaultModified] = await Promise.all([
+				window.electronAPI.readTextFile(original),
+				window.electronAPI.readTextFile(modified),
+			]);
+
+			if (defaultOriginal.isBinary || defaultOriginal.content === undefined) {
+				console.error(
+					`Default original file at ${defaultOriginalPath} is invalid. ${defaultOriginal.isBinary ? "File is binary." : "No content found."} Content cannot be loaded into editor.`,
+				);
+			}
+			else {
+				originalTextContent = defaultOriginal.content;
+			}
+
+			if (defaultModified.isBinary || defaultModified.content === undefined) {
+				console.error(
+					`Default modified file at ${defaultModifiedPath} is invalid. ${defaultModified.isBinary ? "File is binary." : "No content found."} Content cannot be loaded into editor.`,
+				);
+			}
+			else {
+				modifiedTextContent = defaultModified.content;
+			}
+		} catch (error) {
+			console.error("Failed to setup Monaco models:", error);
+		}
+
+		const originalModel = editor.createModel(originalTextContent, initialLanguage);
+		const modifiedModel = editor.createModel(modifiedTextContent, initialLanguage);
+
+		originalModelRef.current = originalModel;
+		modifiedModelRef.current = modifiedModel;
+
+		if (isMountedRef.current) {
+			setModelsReady(true);
+			setLanguage(initialLanguage);
+			setOriginalState({
+				text: originalTextContent,
+				file: { path: defaultOriginalPath, loadedText: originalTextContent },
+			});
+			setModifiedState({
+				text: modifiedTextContent,
+				file: { path: defaultModifiedPath, loadedText: modifiedTextContent },
+			});
+		}
+	}, []);
+
+	const reloadDefaultModels = useCallback(async () => {
+		const oldOriginalModel = originalModelRef.current;
+		const oldModifiedModel = modifiedModelRef.current;
+
+		// Reset state
+		setModelsReady(false);
+		setEditorType("plain");
+		setOriginalState(null);
+		setModifiedState(null);
+		setOriginalFileOverlayActive(true);
+		setModifiedFileOverlayActive(true);
+		setSideBySide(true);
+
+		setTimeout(() => {
+			if (oldOriginalModel !== null) {
+				oldOriginalModel.dispose();
+				originalModelRef.current = null;
+			}
+			if (oldModifiedModel !== null) {
+				oldModifiedModel.dispose();
+				modifiedModelRef.current = null;
+			}
+		}, 0); // Run timeout at the end of the event loop to allow state to reset before creating new models
+
+		await setupModels();
+	}, [setupModels]);
 
 	const onFileDrop = (files: File[], setState: (value: React.SetStateAction<TextState | null>) => void) => {
 		// console.log("onFileDrop called with files:", files, "Event:", event);
@@ -218,87 +319,14 @@ function App() {
 	}, [originalFileOverlayActive, modifiedFileOverlayActive, editorType]);
 
 	// Setup Monaco models on mount and cleanup on unmount
+	// biome-ignore lint/correctness/useExhaustiveDependencies: setupModels is memoized and won't change, and we only want to run this on mount/unmount
 	useEffect(() => {
-		let isMounted = true;
-
-		const setupModels = async () => {
-			try {
-				const appFolder = await window.electronAPI.getAppFolder();
-				console.log("App folder path:", appFolder);
-
-				const tempFolder = await window.electronAPI.getTempFolder();
-				console.log("Temp folder path:", tempFolder);
-
-				const defaultOriginalPath = await window.electronAPI.joinPaths(tempFolder, "original.ts");
-				const defaultModifiedPath = await window.electronAPI.joinPaths(tempFolder, "modified.ts");
-
-				console.log("Default original path:", defaultOriginalPath);
-				console.log("Default modified path:", defaultModifiedPath);
-
-				const [defaultOriginal, defaultModified] = await Promise.all([
-					window.electronAPI.readTextFile(defaultOriginalPath),
-					window.electronAPI.readTextFile(defaultModifiedPath),
-				]);
-
-				if (defaultOriginal.isBinary) {
-					console.error(
-						`Default original file at ${defaultOriginalPath} is binary. Content cannot be loaded into editor.`,
-					);
-					throw new Error(`Default original file at ${defaultOriginalPath} is binary`);
-				}
-
-				if (defaultOriginal.content === undefined) {
-					console.error(
-						`Default original file at ${defaultOriginalPath} cannot be loaded. No content found.`,
-					);
-					throw new Error(
-						`Default original file at ${defaultOriginalPath} cannot be loaded. No content found.`,
-					);
-				}
-
-				if (defaultModified.isBinary) {
-					console.error(
-						`Default modified file at ${defaultModifiedPath} is binary. Content cannot be loaded into editor.`,
-					);
-					throw new Error(`Default modified file at ${defaultModifiedPath} is binary`);
-				}
-
-				if (defaultModified.content === undefined) {
-					console.error(
-						`Default modified file at ${defaultModifiedPath} cannot be loaded. No content found.`,
-					);
-					throw new Error(
-						`Default modified file at ${defaultModifiedPath} cannot be loaded. No content found.`,
-					);
-				}
-
-				const originalModel = monaco.editor.createModel(defaultOriginal.content, initialLanguage);
-				const modifiedModel = monaco.editor.createModel(defaultModified.content, initialLanguage);
-
-				originalModelRef.current = originalModel;
-				modifiedModelRef.current = modifiedModel;
-
-				if (isMounted) {
-					setModelsReady(true);
-					setLanguage(initialLanguage);
-					setOriginalState({
-						text: defaultOriginal.content,
-						file: { path: defaultOriginalPath, loadedText: defaultOriginal.content },
-					});
-					setModifiedState({
-						text: defaultModified.content,
-						file: { path: defaultModifiedPath, loadedText: defaultModified.content },
-					});
-				}
-			} catch (error) {
-				console.error("Failed to setup Monaco models:", error);
-			}
-		};
+		isMountedRef.current = true;
 		setupModels();
 
 		// Cleanup
 		return () => {
-			isMounted = false;
+			isMountedRef.current = false;
 			if (originalModelRef.current != null) {
 				originalModelRef.current.dispose();
 			}
@@ -412,6 +440,15 @@ function App() {
 							</option>
 						))}
 					</select>
+				{	!(originalFileOverlayActive	&& modifiedFileOverlayActive) &&
+					<button
+						onClick={reloadDefaultModels}
+						type="button"
+						className={`px-3 py-1 rounded text-sm flex items-center gap-2 ${buttonColors}`}
+						title="Close Files"
+					>
+						<CloseIcon />
+					</button>}
 				</div>
 			</div>
 		</div>

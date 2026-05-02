@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useId, useRef } from "react";
-import * as monaco from "monaco-editor";
+import { editor as monacoEditor } from "monaco-editor";
 import { DEFAULT_FONTS, MonacoTheme } from "../monaco";
 import EditorDiv from "./EditorDiv";
 import { useDropzone } from "@lkekana/dropzone";
 
 interface PlainEditorProps {
-	model: monaco.editor.ITextModel | null;
+	model: monacoEditor.ITextModel | null;
 	activeTheme: MonacoTheme;
 	fontSize?: number;
 	className?: string;
@@ -33,8 +33,8 @@ export default function PlainEditor({
 }: PlainEditorProps) {
 	const id = useId();
 	const containerRef = useRef<HTMLDivElement>(null); // no <T | null> because our usage is readonly
-	const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
-	const overlayWidgetRef = useRef<monaco.editor.IOverlayWidget | null>(null);
+	const editorRef = useRef<monacoEditor.IStandaloneCodeEditor | null>(null);
+	const overlayWidgetRef = useRef<monacoEditor.IOverlayWidget | null>(null);
 	const overlayDivRef = useRef<HTMLDivElement | null>(null);
 	const overlayMessageBoxRef = useRef<HTMLDivElement | null>(null);
 	const initializedRef = useRef(false);
@@ -57,7 +57,7 @@ export default function PlainEditor({
 	});
 
 	// Create overlay widget
-	const createOverlayWidget = useCallback((): monaco.editor.IOverlayWidget => {
+	const createOverlayWidget = useCallback((): monacoEditor.IOverlayWidget => {
 		return {
 			getId: () => `plain-editor-overlay-${id}`,
 			getDomNode: () => {
@@ -98,7 +98,7 @@ export default function PlainEditor({
 		if (containerRef.current === null || initializedRef.current) return;
 		initializedRef.current = true;
 
-		const editor = monaco.editor.create(containerRef.current, {
+		const editor = monacoEditor.create(containerRef.current, {
 			readOnly: readOnly,
 			automaticLayout: true,
 			minimap: { enabled: true },
