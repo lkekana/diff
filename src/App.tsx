@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import DiffEditor from "./components/DiffEditor";
 import { isLanguageID, type MonacoTheme } from "./monaco";
 import PlainEditor, { PlainEditorSkeleton } from "./components/PlainEditor";
-import * as monaco from "monaco-editor";
+import { editor, languages } from "monaco-editor";
 import type * as React from "react";
 
 const PaletteIcon = () => (
@@ -58,6 +58,45 @@ const SingleViewIcon = () => (
 	</svg>
 );
 
+// Lucide: file
+// const FileIcon = () => (
+// 	<svg
+// 		xmlns="http://www.w3.org/2000/svg"
+// 		width="16"
+// 		height="16"
+// 		viewBox="0 0 24 24"
+// 		fill="none"
+// 		stroke="currentColor"
+// 		strokeWidth="2"
+// 		strokeLinecap="round"
+// 		strokeLinejoin="round"
+
+// 		// class="lucide lucide-file-icon lucide-file"
+// 	>
+// 		<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
+// 		<path d="M14 2v5a1 1 0 0 0 1 1h5" />
+// 	</svg>
+// );
+
+// Lucide: x
+const CloseIcon = () => (
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		// class="lucide lucide-x-icon lucide-x"
+	>
+		<path d="M18 6 6 18" />
+		<path d="m6 6 12 12" />
+	</svg>
+);
+
 const TOGGLE_EDITOR_ENABLED = false;
 
 // const theme = 'vs-dark';
@@ -75,13 +114,13 @@ type TextState = {
 const fontSize = 12;
 
 function App() {
-	// console.log(monaco.languages.getLanguages());
+	// console.log(languages.getLanguages());
 	const [theme, setTheme] = useState<MonacoTheme>("vs-dark");
 	const [buttonColors, setButtonColors] = useState("bg-gray-700 hover:bg-gray-600");
 	const [modelsReady, setModelsReady] = useState(false);
 	const [editorType, setEditorType] = useState<"plain" | "diff">("plain");
-	const originalModelRef = useRef<monaco.editor.ITextModel | null>(null);
-	const modifiedModelRef = useRef<monaco.editor.ITextModel | null>(null);
+	const originalModelRef = useRef<editor.ITextModel | null>(null);
+	const modifiedModelRef = useRef<editor.ITextModel | null>(null);
 	const [originalState, setOriginalState] = useState<TextState | null>(null);
 	const [modifiedState, setModifiedState] = useState<TextState | null>(null);
 	const [language, setLanguage] = useState(initialLanguage);
@@ -105,7 +144,7 @@ function App() {
 				const detectedLanguage = await window.electronAPI.detectLanguage(path);
 				if (detectedLanguage !== null && detectedLanguage !== language) {
 					const isLang = isLanguageID(detectedLanguage);
-					const monacoHasLang = monaco.languages.getLanguages().some((l) => l.id === detectedLanguage);
+					const monacoHasLang = languages.getLanguages().some((l) => l.id === detectedLanguage);
 					console.log(
 						`Detected language: ${detectedLanguage}, isLanguageID: ${isLang}, Monaco supports: ${monacoHasLang}`,
 					);
@@ -127,7 +166,7 @@ function App() {
 
 	// Sync theme with Monaco
 	useEffect(() => {
-		monaco.editor.setTheme(theme);
+		editor.setTheme(theme);
 		if (theme === ("light" as MonacoTheme)) {
 			setButtonColors("bg-gray-300 hover:bg-gray-200");
 		} else {
@@ -139,12 +178,12 @@ function App() {
 	useEffect(() => {
 		if (originalModelRef.current) {
 			if (originalModelRef.current.getLanguageId() !== language) {
-				monaco.editor.setModelLanguage(originalModelRef.current, language);
+				editor.setModelLanguage(originalModelRef.current, language);
 			}
 		}
 		if (modifiedModelRef.current) {
 			if (modifiedModelRef.current.getLanguageId() !== language) {
-				monaco.editor.setModelLanguage(modifiedModelRef.current, language);
+				editor.setModelLanguage(modifiedModelRef.current, language);
 			}
 		}
 	}, [language]);
@@ -278,6 +317,8 @@ function App() {
 	return (
 		<div className="monaco-editor flex flex-col h-screen w-screen overflow-hidden p-1 bg-gray-900 text-white">
 			{/* <h1 className="text-2xl mb-2">Language: {language}</h1> */}
+
+			{/* Editor(s) */}
 			<div className="flex-1 min-h-0 w-full relative">
 				{!modelsReady ? (
 					<div className="w-full h-full">
@@ -288,7 +329,7 @@ function App() {
 						<DiffEditor
 							originalModel={originalModelRef.current}
 							modifiedModel={modifiedModelRef.current}
-							editable={false}
+							editable={true}
 							sideBySide={sideBySide}
 							diffAlgorithm="advanced"
 							fontSize={fontSize}
@@ -313,55 +354,65 @@ function App() {
 					</div>
 				)}
 			</div>
-			<div
-				className={`flex items-center justify-end-safe gap-2 p-2 rounded mt-1 shrink-0 ${theme === ("light" as MonacoTheme) ? "bg-gray-200" : "bg-gray-800"}`}
-			>
-				<button
-					onClick={() =>
-						setTheme((prev) => {
-							const currentIndex = themes.indexOf(prev);
-							const nextIndex = (currentIndex + 1) % themes.length;
-							return themes[nextIndex];
-						})
-					}
-					type="button"
-					className={`px-3 py-1 rounded text-sm flex items-center gap-2 ${buttonColors}`}
-				>
-					<PaletteIcon />
-					<span className="hidden sm:inline">Theme</span>
-				</button>
 
-				{TOGGLE_EDITOR_ENABLED && (
+			{/* Footer */}
+			<div
+				className={`flex items-center justify-between gap-2 p-2 rounded mt-1 shrink-0 ${theme === ("light" as MonacoTheme) ? "bg-gray-200" : "bg-gray-800"}`}
+			>
+				{/* LHS Buttons */}
+				<div className="flex items-center gap-2">
 					<button
-						onClick={() => setEditorType((prev) => (prev === "plain" ? "diff" : "plain"))}
-						type="button"
-						className={`px-3 py-1 rounded text-sm ${buttonColors}`}
-					>
-						Toggle Plain/Diff
-					</button>
-				)}
-				{editorType === "diff" && (
-					<button
-						onClick={() => setSideBySide((prev) => !prev)}
+						onClick={() =>
+							setTheme((prev) => {
+								const currentIndex = themes.indexOf(prev);
+								const nextIndex = (currentIndex + 1) % themes.length;
+								return themes[nextIndex];
+							})
+						}
 						type="button"
 						className={`px-3 py-1 rounded text-sm flex items-center gap-2 ${buttonColors}`}
-						title={sideBySide ? "Switch to Unified View" : "Switch to Side-by-Side View"}
+						title={`Toggle Theme (Active: ${theme})`}
 					>
-						{sideBySide ? <SplitViewIcon /> : <SingleViewIcon />}
-						<span className="hidden sm:inline">{sideBySide ? "Split" : "Unified"}</span>
+						<PaletteIcon />
+						<span className="hidden sm:inline">Theme</span>
 					</button>
-				)}
-				<select
-					value={language}
-					onChange={(e) => setLanguage(e.target.value)}
-					className={`ml-2 px-2 py-1 rounded text-sm border-none outline-none ${buttonColors}`}
-				>
-					{monaco.languages.getLanguages().map((lang) => (
-						<option key={lang.id} value={lang.id}>
-							{lang.aliases && lang.aliases.length > 0 ? lang.aliases[0] : lang.id}
-						</option>
-					))}
-				</select>
+
+					{TOGGLE_EDITOR_ENABLED && (
+						<button
+							onClick={() => setEditorType((prev) => (prev === "plain" ? "diff" : "plain"))}
+							type="button"
+							className={`px-3 py-1 rounded text-sm ${buttonColors}`}
+						>
+							Toggle Plain/Diff
+						</button>
+					)}
+					{editorType === "diff" && (
+						<button
+							onClick={() => setSideBySide((prev) => !prev)}
+							type="button"
+							className={`px-3 py-1 rounded text-sm flex items-center gap-2 ${buttonColors}`}
+							title={sideBySide ? "Switch to Unified View" : "Switch to Side-by-Side View"}
+						>
+							{sideBySide ? <SplitViewIcon /> : <SingleViewIcon />}
+							<span className="hidden sm:inline">{sideBySide ? "Split" : "Unified"}</span>
+						</button>
+					)}
+				</div>
+
+				{/* RHS Buttons */}
+				<div className="flex items-center gap-2">
+					<select
+						value={language}
+						onChange={(e) => setLanguage(e.target.value)}
+						className={`ml-2 px-2 py-1 rounded text-sm border-none outline-none ${buttonColors}`}
+					>
+						{languages.getLanguages().map((lang) => (
+							<option key={lang.id} value={lang.id}>
+								{lang.aliases && lang.aliases.length > 0 ? lang.aliases[0] : lang.id}
+							</option>
+						))}
+					</select>
+				</div>
 			</div>
 		</div>
 	);
