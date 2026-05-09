@@ -577,5 +577,4 @@ if (!nativeBinding) {
 
 module.exports = nativeBinding
 module.exports.detectLanguage = nativeBinding.detectLanguage
-module.exports.plus100 = nativeBinding.plus100
 module.exports.readTextFile = nativeBinding.readTextFile

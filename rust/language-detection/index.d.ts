@@ -2,6 +2,4 @@
 /* eslint-disable */
 export declare function detectLanguage(path: string): string | null;
 
-export declare function plus100(input: number): number;
-
 export declare function readTextFile(path: string): string;
