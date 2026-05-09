@@ -47,12 +47,8 @@ jobs:
         with:
           components: clippy, rustfmt
 
-      - name: Install dependencies (workspace root)
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Install dependencies (language-detection)
-        working-directory: ./rust/language-detection
-        run: pnpm install
 
       - name: Cargo fmt
         working-directory: ./rust/language-detection
@@ -127,15 +123,12 @@ jobs:
         if: ${{ matrix.settings.setup }}
         shell: bash
 
-      - name: Install dependencies (workspace root)
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install dependencies (language-detection)
-        working-directory: ./rust/language-detection
-        run: pnpm install
-
       - name: Build
-        run: pnpm -C rust/language-detection run build --target ${{ matrix.settings.target }}
+        working-directory: ./rust/language-detection
+        run: pnpm build --target ${{ matrix.settings.target }}
         shell: bash
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -185,13 +178,9 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
           architecture: ${{ matrix.settings.architecture }}
         
-      - name: Install dependencies (workspace root)
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
   
-      - name: Install dependencies (language-detection)
-        working-directory: ./rust/language-detection
-        run: pnpm install
-
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
