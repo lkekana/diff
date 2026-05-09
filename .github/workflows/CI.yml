@@ -42,7 +42,6 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: rust/language-detection/pnpm-lock.yaml
   
       - name: Install
         uses: dtolnay/rust-toolchain@stable
@@ -96,7 +95,6 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: rust/language-detection/pnpm-lock.yaml
       - name: Install
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -181,7 +179,6 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
-          cache-dependency-path: rust/language-detection/pnpm-lock.yaml
           architecture: ${{ matrix.settings.architecture }}
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
