@@ -4,7 +4,8 @@ env:
   APP_NAME: language-detection
   MACOSX_DEPLOYMENT_TARGET: '10.13'
   CARGO_INCREMENTAL: '1'
-'on':
+
+on:
   push:
     branches:
       - main
@@ -25,9 +26,6 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./rust/language-detection
     steps:
       - uses: actions/checkout@v6
 
@@ -42,19 +40,26 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-  
-      - name: Install
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
 
-      - name: Install dependencies
+      - name: Install dependencies (workspace root)
+        run: pnpm install --frozen-lockfile
+
+      - name: Install dependencies (language-detection)
+        working-directory: ./rust/language-detection
         run: pnpm install
 
       - name: Cargo fmt
+        working-directory: ./rust/language-detection
         run: cargo fmt -- --check
 
       - name: Clippy
+        working-directory: ./rust/language-detection
         run: cargo clippy
   build:
     strategy:
@@ -75,9 +80,6 @@ jobs:
             build: pnpm build --target aarch64-pc-windows-msvc
     name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
-    defaults:
-      run:
-        working-directory: ./rust/language-detection
     steps:
       - uses: actions/checkout@v6
 
@@ -92,7 +94,8 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-      - name: Install
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
@@ -123,18 +126,24 @@ jobs:
         run: ${{ matrix.settings.setup }}
         if: ${{ matrix.settings.setup }}
         shell: bash
-      - name: Install dependencies
+
+      - name: Install dependencies (workspace root)
+        run: pnpm install --frozen-lockfile
+
+      - name: Install dependencies (language-detection)
+        working-directory: ./rust/language-detection
         run: pnpm install
+
       - name: Build
-        run: ${{ matrix.settings.build }}
+        run: pnpm -C rust/language-detection run build --target ${{ matrix.settings.target }}
         shell: bash
       - name: Upload artifact
         uses: actions/upload-artifact@v7
         with:
           name: bindings-${{ matrix.settings.target }}
           path: |
-            ${{ env.APP_NAME }}.*.node
-            ${{ env.APP_NAME }}.*.wasm
+            rust/language-detection/${{ env.APP_NAME }}.*.node
+            rust/language-detection/${{ env.APP_NAME }}.*.wasm
           if-no-files-found: error
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
@@ -159,9 +168,6 @@ jobs:
         node:
           - '20'
     runs-on: ${{ matrix.settings.host }}
-    defaults:
-      run:
-        working-directory: ./rust/language-detection
     steps:
       - uses: actions/checkout@v6
 
@@ -176,16 +182,25 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
           architecture: ${{ matrix.settings.architecture }}
-      - name: Install dependencies
+        
+      - name: Install dependencies (workspace root)
+        run: pnpm install --frozen-lockfile
+  
+      - name: Install dependencies (language-detection)
+        working-directory: ./rust/language-detection
         run: pnpm install
+
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
           name: bindings-${{ matrix.settings.target }}
-          path: .
+          path: rust/language-detection
       - name: List packages
+        working-directory: ./rust/language-detection
         run: ls -R .
         shell: bash
       - name: Test bindings
+        working-directory: ./rust/language-detection
         run: pnpm test
