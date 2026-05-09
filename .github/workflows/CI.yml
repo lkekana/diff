@@ -49,7 +49,7 @@ jobs:
           components: clippy, rustfmt
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Cargo fmt
         run: cargo fmt -- --check
@@ -124,7 +124,7 @@ jobs:
         if: ${{ matrix.settings.setup }}
         shell: bash
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
       - name: Build
         run: ${{ matrix.settings.build }}
         shell: bash
@@ -178,7 +178,7 @@ jobs:
           cache: pnpm
           architecture: ${{ matrix.settings.architecture }}
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
