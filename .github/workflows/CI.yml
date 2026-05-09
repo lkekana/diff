@@ -30,21 +30,34 @@ jobs:
         working-directory: ./rust/language-detection
     steps:
       - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        name: Install pnpm
+        with:
+          version: 10
+          cache: true
+
       - name: Setup node
         uses: actions/setup-node@v6
         with:
-          node-version: 24
-          cache: yarn
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: rust/language-detection/pnpm-lock.yaml
+  
       - name: Install
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+
       - name: Install dependencies
-        run: yarn install
-      - name: Oxlint
-        run: yarn lint
+        run: pnpm install --frozen-lockfile
+
+      - name: Biome Lint
+        run: pnpm lint
+
       - name: Cargo fmt
         run: cargo fmt -- --check
+
       - name: Clippy
         run: cargo clippy
   build:
@@ -54,28 +67,36 @@ jobs:
         settings:
           - host: macos-latest
             target: x86_64-apple-darwin
-            build: yarn build --target x86_64-apple-darwin
+            build: pnpm build --target x86_64-apple-darwin
           - host: windows-latest
-            build: yarn build --target x86_64-pc-windows-msvc
+            build: pnpm build --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: yarn build --target aarch64-apple-darwin
+            build: pnpm build --target aarch64-apple-darwin
           - host: windows-latest
             target: aarch64-pc-windows-msvc
-            build: yarn build --target aarch64-pc-windows-msvc
-    name: stable - ${{ matrix.settings.target }} - node@22
+            build: pnpm build --target aarch64-pc-windows-msvc
+    name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     defaults:
       run:
         working-directory: ./rust/language-detection
     steps:
       - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        name: Install pnpm
+        with:
+          version: 10
+          cache: true
+
       - name: Setup node
         uses: actions/setup-node@v6
         with:
-          node-version: 24
-          cache: yarn
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: rust/language-detection/pnpm-lock.yaml
       - name: Install
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -108,7 +129,7 @@ jobs:
         if: ${{ matrix.settings.setup }}
         shell: bash
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
       - name: Build
         run: ${{ matrix.settings.build }}
         shell: bash
@@ -142,21 +163,28 @@ jobs:
             architecture: x64
         node:
           - '20'
-          - '22'
     runs-on: ${{ matrix.settings.host }}
     defaults:
       run:
         working-directory: ./rust/language-detection
     steps:
       - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        name: Install pnpm
+        with:
+          version: 10
+          cache: true
+
       - name: Setup node
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
-          cache: yarn
+          cache: pnpm
+          cache-dependency-path: rust/language-detection/pnpm-lock.yaml
           architecture: ${{ matrix.settings.architecture }}
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
@@ -166,4 +194,4 @@ jobs:
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: yarn test
+        run: pnpm test
