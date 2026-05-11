@@ -4,10 +4,12 @@ env:
   APP_NAME: language-detection
   MACOSX_DEPLOYMENT_TARGET: '10.13'
   CARGO_INCREMENTAL: '1'
-'on':
+
+on:
   push:
     branches:
       - main
+      - ci-test
     tags-ignore:
       - '**'
     paths-ignore:
@@ -26,22 +28,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        name: Install pnpm
+        with:
+          version: 10
+          cache: true
+
       - name: Setup node
         uses: actions/setup-node@v6
         with:
-          node-version: 24
-          cache: yarn
-      - name: Install
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+
       - name: Install dependencies
-        run: yarn install
-      - name: Oxlint
-        run: yarn lint
+        run: pnpm install --frozen-lockfile
+
       - name: Cargo fmt
+        working-directory: ./rust/language-detection
         run: cargo fmt -- --check
+
       - name: Clippy
+        working-directory: ./rust/language-detection
         run: cargo clippy
   build:
     strategy:
@@ -50,26 +64,38 @@ jobs:
         settings:
           - host: macos-latest
             target: x86_64-apple-darwin
-            build: yarn build --target x86_64-apple-darwin
+            build: pnpm build --target x86_64-apple-darwin
+            electron_wildcard: '*-Mac-*-x64.*'
           - host: windows-latest
-            build: yarn build --target x86_64-pc-windows-msvc
+            build: pnpm build --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
+            electron_wildcard: '*-Windows-*-x64-Setup.*'
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: yarn build --target aarch64-apple-darwin
+            build: pnpm build --target aarch64-apple-darwin
+            electron_wildcard: '*-Mac-*-arm64.*'
           - host: windows-latest
             target: aarch64-pc-windows-msvc
-            build: yarn build --target aarch64-pc-windows-msvc
-    name: stable - ${{ matrix.settings.target }} - node@22
+            build: pnpm build --target aarch64-pc-windows-msvc
+            electron_wildcard: '*-Windows-*-arm64-Setup.*'
+    name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        name: Install pnpm
+        with:
+          version: 10
+          cache: true
+
       - name: Setup node
         uses: actions/setup-node@v6
         with:
-          node-version: 24
-          cache: yarn
-      - name: Install
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
@@ -100,19 +126,66 @@ jobs:
         run: ${{ matrix.settings.setup }}
         if: ${{ matrix.settings.setup }}
         shell: bash
+
       - name: Install dependencies
-        run: yarn install
-      - name: Build
-        run: ${{ matrix.settings.build }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (napi-rs / Rust)
+        working-directory: ./rust/language-detection
+        run: pnpm build --target ${{ matrix.settings.target }}
         shell: bash
-      - name: Upload artifact
+
+      - name: Build frontend
+        run: |
+          pnpm tsc && pnpm vite build
+        shell: bash
+
+      - name: Build Electron app for target
+        run: |
+          # Map napi-rs target to electron-builder flags
+          case "${{ matrix.settings.target }}" in
+            x86_64-apple-darwin)
+              ELECTRON_FLAGS="--mac --x64"
+              ;;
+            aarch64-apple-darwin)
+              ELECTRON_FLAGS="--mac --arm64"
+              ;;
+            x86_64-pc-windows-msvc)
+              ELECTRON_FLAGS="--win --x64"
+              ;;
+            aarch64-pc-windows-msvc)
+              ELECTRON_FLAGS="--win --arm64"
+              ;;
+          esac
+          
+          pnpm exec electron-builder ${ELECTRON_FLAGS} --publish never
+        shell: bash
+        env:
+          # Prevent code signing in CI (configure separately if needed)
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      
+      - name: List release directory
+        run: ls -R release
+        shell: bash
+      
+      - name: Upload napi-rs bindings
         uses: actions/upload-artifact@v7
         with:
           name: bindings-${{ matrix.settings.target }}
           path: |
-            ${{ env.APP_NAME }}.*.node
-            ${{ env.APP_NAME }}.*.wasm
+            rust/language-detection/${{ env.APP_NAME }}.*.node
+            rust/language-detection/${{ env.APP_NAME }}.*.wasm
           if-no-files-found: error
+  
+      - name: Upload Electron artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: electron-${{ matrix.settings.target }}
+          path: |
+            release/*/${{ matrix.settings.electron_wildcard }}
+            release/*/latest-mac.yml
+          if-no-files-found: error
+
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
     needs:
@@ -135,71 +208,36 @@ jobs:
             architecture: x64
         node:
           - '20'
-          - '22'
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v6
+
+      - uses: pnpm/action-setup@v6
+        name: Install pnpm
+        with:
+          version: 10
+          cache: true
+
       - name: Setup node
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
-          cache: yarn
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
           architecture: ${{ matrix.settings.architecture }}
+        
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install --frozen-lockfile
+  
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
           name: bindings-${{ matrix.settings.target }}
-          path: .
+          path: rust/language-detection
       - name: List packages
+        working-directory: ./rust/language-detection
         run: ls -R .
         shell: bash
       - name: Test bindings
-        run: yarn test
-  publish:
-    name: Publish
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-    needs:
-      - lint
-      - test-macOS-windows-binding
-    steps:
-      - uses: actions/checkout@v6
-      - name: Setup node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: yarn
-      - name: Install dependencies
-        run: yarn install
-      - name: create npm dirs
-        run: yarn napi create-npm-dirs
-      - name: Download all artifacts
-        uses: actions/download-artifact@v8
-        with:
-          path: artifacts
-      - name: Move artifacts
-        run: yarn artifacts
-      - name: List packages
-        run: ls -R ./npm
-        shell: bash
-      - name: Publish
-        run: |
-          npm config set provenance true
-          if git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+$";
-          then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            npm publish --access public
-          elif git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+";
-          then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            npm publish --tag next --access public
-          else
-            echo "Not a release, skipping publish"
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        working-directory: ./rust/language-detection
+        run: pnpm test

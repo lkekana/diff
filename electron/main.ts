@@ -47,25 +47,24 @@ async function createDefaultFiles() {
 
 	await Promise.allSettled(
 		files.map(async (file) => {
-		  try {
-			// 'wx' = write, fail if exists
-			await fsAsync.writeFile(file.path, file.content, { encoding: "utf-8", flag: "wx" });
-			console.log(`✓ Created ${path.basename(file.path)}`);
-		  } catch (err) {
-			if (err instanceof Error && "code" in err) {
-				if (err.code === "EEXIST") {
-				console.log(`✓ ${path.basename(file.path)} already exists, skipping...`);
+			try {
+				// 'wx' = write, fail if exists
+				await fsAsync.writeFile(file.path, file.content, { encoding: "utf-8", flag: "wx" });
+				console.log(`✓ Created ${path.basename(file.path)}`);
+			} catch (err) {
+				if (err instanceof Error && "code" in err) {
+					if (err.code === "EEXIST") {
+						console.log(`✓ ${path.basename(file.path)} already exists, skipping...`);
+					} else {
+						throw err; // Re-throw unexpected errors
+					}
 				} else {
-				throw err; // Re-throw unexpected errors
+					console.error(`Failed to create ${path.basename(file.path)}:`, err);
+					throw err;
 				}
 			}
-			else {
-				console.error(`Failed to create ${path.basename(file.path)}:`, err);
-				throw err;
-			}
-		  }
-		})
-	  );
+		}),
+	);
 }
 createDefaultFiles().catch((error) => {
 	console.error("Failed to create default files:", error);

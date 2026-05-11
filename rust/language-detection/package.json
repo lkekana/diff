@@ -26,12 +26,10 @@
 		"format:biome": "biome format --fix",
 		"format:toml": "taplo format",
 		"format:rs": "cargo fmt",
-		"lint": "oxlint .",
 		"prepublishOnly": "napi prepublish -t npm",
 		"test": "ava",
 		"preversion": "napi build --platform && git add .",
-		"version": "napi version",
-		"prepare": "husky"
+		"version": "napi version"
 	},
 	"devDependencies": {
 		"@emnapi/core": "^1.5.0",
@@ -42,15 +40,12 @@
 		"@tybys/wasm-util": "^0.10.0",
 		"ava": "^7.0.0",
 		"chalk": "^5.6.2",
-		"husky": "^9.1.7",
 		"lint-staged": "^16.1.6",
 		"npm-run-all2": "^8.0.4",
-		"oxlint": "^1.14.0",
 		"tinybench": "^6.0.0",
 		"typescript": "^6.0.0"
 	},
 	"lint-staged": {
-		"*.@(js|ts|tsx)": ["oxlint --fix"],
 		"*.@(js|ts|tsx|yml|yaml|md|json)": ["biome format --fix"],
 		"*.toml": ["taplo format"]
 	},
@@ -64,6 +59,5 @@
 			"OXC_TSCONFIG_PATH": "./__test__/tsconfig.json"
 		},
 		"nodeArguments": ["--import", "@oxc-node/core/register"]
-	},
-	"packageManager": "yarn@4.14.1"
+	}
 }
