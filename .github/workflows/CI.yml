@@ -181,7 +181,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: electron-${{ matrix.settings.target }}
-          path: release/${{ matrix.settings.electron_wildcard }}
+          path: |
+            release/*/${{ matrix.settings.electron_wildcard }}
+            release/*/latest-mac.yml
           if-no-files-found: error
 
   test-macOS-windows-binding:
