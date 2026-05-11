@@ -126,18 +126,55 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build
+      - name: Build (napi-rs / Rust)
         working-directory: ./rust/language-detection
         run: pnpm build --target ${{ matrix.settings.target }}
         shell: bash
-      - name: Upload artifact
+
+      - name: Build frontend
+        run: |
+          pnpm tsc && pnpm vite build
+        shell: bash
+
+      - name: Build Electron app for target
+        run: |
+          # Map napi-rs target to electron-builder flags
+          case "${{ matrix.settings.target }}" in
+            x86_64-apple-darwin)
+              ELECTRON_FLAGS="--mac --x64"
+              ;;
+            aarch64-apple-darwin)
+              ELECTRON_FLAGS="--mac --arm64"
+              ;;
+            x86_64-pc-windows-msvc)
+              ELECTRON_FLAGS="--win --x64"
+              ;;
+            aarch64-pc-windows-msvc)
+              ELECTRON_FLAGS="--win --arm64"
+              ;;
+          esac
+          
+          pnpm exec electron-builder ${ELECTRON_FLAGS} --publish never
+        shell: bash
+        env:
+          # Prevent code signing in CI (configure separately if needed)
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+      - name: Upload Electron artifact
         uses: actions/upload-artifact@v7
         with:
-          name: bindings-${{ matrix.settings.target }}
-          path: |
-            rust/language-detection/${{ env.APP_NAME }}.*.node
-            rust/language-detection/${{ env.APP_NAME }}.*.wasm
+          name: electron-${{ matrix.settings.target }}
+          path: release/
           if-no-files-found: error
+
+      # - name: Upload artifact
+      #   uses: actions/upload-artifact@v7
+      #   with:
+      #     name: bindings-${{ matrix.settings.target }}
+      #     path: |
+      #       rust/language-detection/${{ env.APP_NAME }}.*.node
+      #       rust/language-detection/${{ env.APP_NAME }}.*.wasm
+      #     if-no-files-found: error
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
     needs:
