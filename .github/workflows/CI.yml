@@ -65,15 +65,19 @@ jobs:
           - host: macos-latest
             target: x86_64-apple-darwin
             build: pnpm build --target x86_64-apple-darwin
+            electron_wildcard: '*-Mac-*-x64.*'
           - host: windows-latest
             build: pnpm build --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
+            electron_wildcard: '*-Windows-*-x64-Setup.*'
           - host: macos-latest
             target: aarch64-apple-darwin
             build: pnpm build --target aarch64-apple-darwin
+            electron_wildcard: '*-Mac-*-arm64.*'
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             build: pnpm build --target aarch64-pc-windows-msvc
+            electron_wildcard: '*-Windows-*-arm64-Setup.*'
     name: stable - ${{ matrix.settings.target }} - node@20
     runs-on: ${{ matrix.settings.host }}
     steps:
@@ -159,22 +163,27 @@ jobs:
         env:
           # Prevent code signing in CI (configure separately if needed)
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-
+      
+      - name: List release directory
+        run: ls -R release
+        shell: bash
+      
+      - name: Upload napi-rs bindings
+        uses: actions/upload-artifact@v7
+        with:
+          name: bindings-${{ matrix.settings.target }}
+          path: |
+            rust/language-detection/${{ env.APP_NAME }}.*.node
+            rust/language-detection/${{ env.APP_NAME }}.*.wasm
+          if-no-files-found: error
+  
       - name: Upload Electron artifact
         uses: actions/upload-artifact@v7
         with:
           name: electron-${{ matrix.settings.target }}
-          path: release/
+          path: release/${{ matrix.settings.electron_wildcard }}
           if-no-files-found: error
 
-      # - name: Upload artifact
-      #   uses: actions/upload-artifact@v7
-      #   with:
-      #     name: bindings-${{ matrix.settings.target }}
-      #     path: |
-      #       rust/language-detection/${{ env.APP_NAME }}.*.node
-      #       rust/language-detection/${{ env.APP_NAME }}.*.wasm
-      #     if-no-files-found: error
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
     needs:
