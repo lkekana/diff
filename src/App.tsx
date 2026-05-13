@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import DiffEditor from "./components/DiffEditor";
 import { isLanguageID, type MonacoTheme } from "./monaco";
 import PlainEditor, { PlainEditorSkeleton } from "./components/PlainEditor";
-import { editor, languages } from "monaco-editor";
+import { editor, IDisposable, languages } from "monaco-editor";
 import type * as React from "react";
 
 const PaletteIcon = () => (
@@ -115,6 +115,27 @@ const LoadingIcon = () => (
 	</svg>
 );
 
+// Lucide: arrow-left-right
+const SwapIcon = () => (
+	<svg
+		xmlns="http://www.w3.org/2000/svg"
+		width="16"
+		height="16"
+		viewBox="0 0 24 24"
+		fill="none"
+		stroke="currentColor"
+		strokeWidth="2"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+		// class="lucide lucide-arrow-left-right-icon lucide-arrow-left-right"
+	>
+		<path d="M8 3 4 7l4 4" />
+		<path d="M4 7h16" />
+		<path d="m16 21 4-4-4-4" />
+		<path d="M20 17H4" />
+	</svg>
+);
+
 const TOGGLE_EDITOR_ENABLED = false;
 
 // const theme = 'vs-dark';
@@ -125,12 +146,9 @@ const modifiedDefaultText = `function add(a, b) {\n\treturn a + b; // Should've 
 const initialLanguage = "typescript";
 const themes = ["vs-dark", "light", "hc-black"] as MonacoTheme[];
 
-type TextState = {
-	text: string;
-	file: {
-		path?: string;
-		loadedText: string;
-	};
+type LoadedFile = {
+	path: string;
+	loadedText: string;
 };
 
 const getDefaultPaths = async (): Promise<{ original: string; modified: string }> => {
@@ -155,17 +173,17 @@ function App() {
 	const [modelsReady, setModelsReady] = useState(false);
 	const [editorType, setEditorType] = useState<"plain" | "diff">("plain");
 	const originalModelRef = useRef<editor.ITextModel | null>(null);
+	const originalModelContentChangeListenerRef = useRef<IDisposable | null>(null);
 	const modifiedModelRef = useRef<editor.ITextModel | null>(null);
-	const [originalState, setOriginalState] = useState<TextState | null>(null);
-	const [modifiedState, setModifiedState] = useState<TextState | null>(null);
+	const modifiedModelContentChangeListenerRef = useRef<IDisposable | null>(null);
+	const [originalState, setOriginalState] = useState<LoadedFile | null>(null);
+	const [modifiedState, setModifiedState] = useState<LoadedFile | null>(null);
 	const [language, setLanguage] = useState(initialLanguage);
 	const [originalFileOverlayActive, setOriginalFileOverlayActive] = useState(true);
 	const [modifiedFileOverlayActive, setModifiedFileOverlayActive] = useState(true);
 	const [sideBySide, setSideBySide] = useState(true);
 	const isMountedRef = useRef(true);
 	const [isLoadingFiles, setIsLoadingFiles] = useState(false);
-
-	console.log("isLoadingFiles:", isLoadingFiles);
 
 	const anyFileLoaded = !originalFileOverlayActive || !modifiedFileOverlayActive;
 
@@ -204,28 +222,32 @@ function App() {
 		}
 
 		const originalModel = editor.createModel(originalTextContent, initialLanguage);
+		const originalChangeEvent = originalModel.onDidChangeContent(() => {
+			const currentText = originalModel.getValue();
+			console.log("Original model content changed. Current text length:", currentText.length);
+		});
 		const modifiedModel = editor.createModel(modifiedTextContent, initialLanguage);
+		const modifiedChangeEvent = modifiedModel.onDidChangeContent(() => {
+			const currentText = modifiedModel.getValue();
+			console.log("Modified model content changed. Current text length:", currentText.length);
+		});
 
 		originalModelRef.current = originalModel;
+		originalModelContentChangeListenerRef.current = originalChangeEvent;
 		modifiedModelRef.current = modifiedModel;
+		modifiedModelContentChangeListenerRef.current = modifiedChangeEvent;
 
 		if (isMountedRef.current) {
 			setModelsReady(true);
 			setLanguage(initialLanguage);
-			setOriginalState({
-				text: originalTextContent,
-				file: { path: defaultOriginalPath, loadedText: originalTextContent },
-			});
-			setModifiedState({
-				text: modifiedTextContent,
-				file: { path: defaultModifiedPath, loadedText: modifiedTextContent },
-			});
 		}
 	}, []);
 
 	const reloadDefaultModels = useCallback(async () => {
 		const oldOriginalModel = originalModelRef.current;
 		const oldModifiedModel = modifiedModelRef.current;
+		const oldOriginalChangeListener = originalModelContentChangeListenerRef.current;
+		const oldModifiedChangeListener = modifiedModelContentChangeListenerRef.current;
 		setIsLoadingFiles(true);
 
 		// Reset state
@@ -246,6 +268,14 @@ function App() {
 				oldModifiedModel.dispose();
 				modifiedModelRef.current = null;
 			}
+			if (oldOriginalChangeListener !== null) {
+				oldOriginalChangeListener.dispose();
+				originalModelContentChangeListenerRef.current = null;
+			}
+			if (oldModifiedChangeListener !== null) {
+				oldModifiedChangeListener.dispose();
+				modifiedModelContentChangeListenerRef.current = null;
+			}
 		}, 0); // Run timeout at the end of the event loop to allow state to reset before creating new models
 
 		try {
@@ -257,16 +287,57 @@ function App() {
 		}
 	}, [setupModels]);
 
-	const onFileDrop = (files: File[], setState: (value: React.SetStateAction<TextState | null>) => void) => {
+	const swapModels = useCallback(() => {
+		if (originalModelRef.current !== null && modifiedModelRef.current !== null) {
+			const tempModel = originalModelRef.current;
+			originalModelRef.current = modifiedModelRef.current;
+			modifiedModelRef.current = tempModel;
+
+			const originalOverlayWasActive = originalFileOverlayActive;
+			const modifiedOverlayWasActive = modifiedFileOverlayActive;
+			console.log(
+				"Overlay states before swap - Original:",
+				originalOverlayWasActive,
+				"Modified:",
+				modifiedOverlayWasActive,
+			);
+			setOriginalFileOverlayActive(modifiedOverlayWasActive);
+			setModifiedFileOverlayActive(originalOverlayWasActive);
+
+			// Force editor to update models
+			setModelsReady(false);
+			setTimeout(() => setModelsReady(true), 0);
+
+			// Swap states to keep file info and overlays in sync
+			const tempOriginalState = originalState;
+			const tempModifiedState = modifiedState;
+			setOriginalState(tempModifiedState);
+			setModifiedState(tempOriginalState);
+		}
+	}, [modifiedFileOverlayActive, originalFileOverlayActive, modifiedState, originalState]);
+
+	const onFileDrop = (
+		files: File[],
+		setState: (value: React.SetStateAction<LoadedFile | null>) => void,
+		targetModelRef: React.MutableRefObject<editor.ITextModel | null>,
+	) => {
 		// console.log("onFileDrop called with files:", files, "Event:", event);
-		const getFileData = async (file: File) => {
+		if (files.length === 0) return;
+		const file = files[0];
+		const getFileData = async () => {
 			try {
 				const path = await window.electronAPI.getFilePath(file);
 				console.log("File:", file, "Path:", path);
 				const reader = new FileReader();
 				reader.onload = () => {
 					const loadedText = reader.result as string;
-					setState({ text: loadedText, file: { path, loadedText } });
+
+					const model = targetModelRef.current;
+					if (model !== null) {
+						model.setValue(loadedText);
+					}
+
+					setState({ path, loadedText });
 				};
 				reader.readAsText(file);
 
@@ -283,14 +354,10 @@ function App() {
 				}
 			} catch (error) {
 				console.error("Failed to load file:", error);
-				throw error;
 			}
 		};
 
-		if (files.length > 0) {
-			const file = files[0];
-			getFileData(file);
-		}
+		getFileData();
 	};
 
 	// Sync theme with Monaco
@@ -305,38 +372,13 @@ function App() {
 
 	// Sync language changes with Monaco models
 	useEffect(() => {
-		if (originalModelRef.current) {
-			if (originalModelRef.current.getLanguageId() !== language) {
-				editor.setModelLanguage(originalModelRef.current, language);
-			}
+		if (originalModelRef.current && originalModelRef.current.getLanguageId() !== language) {
+			editor.setModelLanguage(originalModelRef.current, language);
 		}
-		if (modifiedModelRef.current) {
-			if (modifiedModelRef.current.getLanguageId() !== language) {
-				editor.setModelLanguage(modifiedModelRef.current, language);
-			}
+		if (modifiedModelRef.current && modifiedModelRef.current.getLanguageId() !== language) {
+			editor.setModelLanguage(modifiedModelRef.current, language);
 		}
 	}, [language]);
-
-	// Sync models with state (for file loading)
-	useEffect(() => {
-		if (
-			originalModelRef.current &&
-			originalState !== null &&
-			originalModelRef.current.getValue() !== originalState.text
-		) {
-			originalModelRef.current.setValue(originalState.text);
-		}
-	}, [originalState]);
-
-	useEffect(() => {
-		if (
-			modifiedModelRef.current &&
-			modifiedState !== null &&
-			modifiedModelRef.current.getValue() !== modifiedState.text
-		) {
-			modifiedModelRef.current.setValue(modifiedState.text);
-		}
-	}, [modifiedState]);
 
 	useEffect(() => {
 		if (!originalFileOverlayActive && !modifiedFileOverlayActive) {
@@ -396,14 +438,14 @@ function App() {
 						<PlainEditor
 							model={originalModelRef.current}
 							fontSize={fontSize}
-							onDrop={(files) => onFileDrop(files, setOriginalState)}
+							onDrop={(files) => onFileDrop(files, setOriginalState, originalModelRef)}
 							overlayActiveState={[originalFileOverlayActive, setOriginalFileOverlayActive]}
 							activeTheme={theme}
 						/>
 						<PlainEditor
 							model={modifiedModelRef.current}
 							fontSize={fontSize}
-							onDrop={(files) => onFileDrop(files, setModifiedState)}
+							onDrop={(files) => onFileDrop(files, setModifiedState, modifiedModelRef)}
 							overlayActiveState={[modifiedFileOverlayActive, setModifiedFileOverlayActive]}
 							activeTheme={theme}
 						/>
@@ -482,6 +524,15 @@ function App() {
 						) : (
 							<CloseIcon />
 						)}
+					</button>
+					<button
+						onClick={swapModels}
+						disabled={isLoadingFiles || !anyFileLoaded}
+						type="button"
+						className={`px-3 py-1 rounded text-sm flex items-center gap-2 ${isLoadingFiles || !anyFileLoaded ? "opacity-50" : ""} ${buttonColors}`}
+						title={"Swap Original and Modified"}
+					>
+						<SwapIcon />
 					</button>
 				</div>
 			</div>

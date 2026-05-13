@@ -123,11 +123,13 @@ export default function PlainEditor({
 		overlayWidgetRef.current = createOverlayWidget();
 
 		// Show overlay if either internal state or drag state indicates it should be visible
-		const shouldShowOverlay = overlayActiveState || isDragActive;
-		if (shouldShowOverlay && overlayWidgetRef.current !== null) {
-			editor.addOverlayWidget(overlayWidgetRef.current);
-			editor.layout();
-		}
+		// const shouldShowOverlay = overlayActiveState || isDragActive;
+		// if (shouldShowOverlay && overlayWidgetRef.current !== null) {
+			// editor.addOverlayWidget(overlayWidgetRef.current);
+			// editor.layout();
+		// }
+		editor.addOverlayWidget(overlayWidgetRef.current);
+		editor.layout();
 
 		const resizeObserver = new ResizeObserver((entries) => {
 			for (const entry of entries) {
