@@ -1,11 +1,12 @@
 import { useEffect, useRef } from "react";
 import { editor } from "monaco-editor";
-import { type DiffAlgorithm, DEFAULT_FONTS } from "../monaco";
+import { type DiffAlgorithm, DEFAULT_FONTS, DiffActiveEditor } from "../monaco";
 import EditorDiv from "./EditorDiv";
 
 interface DiffEditorProps {
 	originalModel: editor.ITextModel | null;
 	modifiedModel: editor.ITextModel | null;
+	activeEditor: [DiffActiveEditor, React.Dispatch<React.SetStateAction<DiffActiveEditor>>];
 	editable?: boolean;
 	sideBySide?: boolean;
 	diffAlgorithm?: DiffAlgorithm;
@@ -16,6 +17,7 @@ interface DiffEditorProps {
 export default function DiffEditor({
 	originalModel,
 	modifiedModel,
+	activeEditor: [activeEditor, setActiveEditor],
 	editable = true,
 	sideBySide = true,
 	diffAlgorithm = "advanced",
@@ -30,6 +32,15 @@ export default function DiffEditor({
 	useEffect(() => {
 		if (containerRef.current === null || initializedRef.current) return;
 		initializedRef.current = true;
+
+		let blurTimeout: ReturnType<typeof setTimeout> | null = null;
+
+		const clearBlurTimeout = () => {
+			if (blurTimeout) {
+				clearTimeout(blurTimeout);
+				blurTimeout = null;
+			}
+		};
 
 		const diffEditor = editor.createDiffEditor(containerRef.current, {
 			readOnly: !editable,
@@ -60,6 +71,38 @@ export default function DiffEditor({
 				modified: modifiedModel,
 			});
 		}
+		diffEditor.getOriginalEditor().onDidFocusEditorWidget(() => {
+			// alert("Focused original editor");
+			clearBlurTimeout();
+			setActiveEditor("original");
+		});
+		// diffEditor.getOriginalEditor().onDidBlurEditorText(() => {});
+		diffEditor.getModifiedEditor().onDidFocusEditorWidget(() => {
+			// alert("Focused modified editor");
+			clearBlurTimeout();
+			setActiveEditor("modified");
+		});
+		// diffEditor.getModifiedEditor().onDidBlurEditorText(() => {});
+
+		containerRef.current.onblur = () => {
+			// alert("Blurred diff editor");
+			setActiveEditor(null);
+		};
+
+		// Track blur from the container with a small delay
+		// to allow focus events to fire first
+		const handleContainerBlur = () => {
+			blurTimeout = setTimeout(() => {
+				// Check if any editor pane still has focus
+				const activeElement = document.activeElement;
+				const container = containerRef.current;
+				if (container && !container.contains(activeElement)) {
+					setActiveEditor(null);
+				}
+			}, 50); // Small delay to let focus events propagate
+		};
+
+		containerRef.current.addEventListener("focusout", handleContainerBlur);
 		editorRef.current = diffEditor;
 		// editorRef.current.updateOptions
 

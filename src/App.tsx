@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import DiffEditor from "./components/DiffEditor";
-import { isLanguageID, type MonacoTheme } from "./monaco";
+import { DiffActiveEditor, isLanguageID, type MonacoTheme } from "./monaco";
 import PlainEditor, { PlainEditorSkeleton } from "./components/PlainEditor";
 import { editor, IDisposable, languages } from "monaco-editor";
 import type * as React from "react";
@@ -190,6 +190,7 @@ function App() {
 	const [isLoadingFiles, setIsLoadingFiles] = useState(false);
 	const [originalIsDirty, setOriginalIsDirty] = useState(false);
 	const [modifiedIsDirty, setModifiedIsDirty] = useState(false);
+	const [diffEditorActiveSide, setDiffEditorActiveSide] = useState<DiffActiveEditor>(null);
 
 	const anyFileLoaded = !originalFileOverlayActive || !modifiedFileOverlayActive;
 
@@ -426,6 +427,10 @@ function App() {
 		}
 	}, [originalFileOverlayActive, modifiedFileOverlayActive, editorType]);
 
+	useEffect(() => {
+		console.log("Diff editor active side changed:", diffEditorActiveSide);
+	}, [diffEditorActiveSide]);
+
 	// Setup Monaco models on mount and cleanup on unmount
 	// biome-ignore lint/correctness/useExhaustiveDependencies: setupModels is memoized and won't change, and we only want to run this on mount/unmount
 	useEffect(() => {
@@ -467,6 +472,7 @@ function App() {
 						<DiffEditor
 							originalModel={originalModelRef.current}
 							modifiedModel={modifiedModelRef.current}
+							activeEditor={[diffEditorActiveSide, setDiffEditorActiveSide]}
 							editable={true}
 							sideBySide={sideBySide}
 							diffAlgorithm="advanced"

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef } from "react";
 import { editor as monacoEditor } from "monaco-editor";
-import { DEFAULT_FONTS, MonacoTheme } from "../monaco";
+import { DEFAULT_FONTS, MESSAGE_BOX_BASE_CLASSES, MESSAGE_BOX_DARK_CLASSES, MESSAGE_BOX_LIGHT_CLASSES, MonacoTheme, OVERLAY_BASE_CLASSES, OVERLAY_DARK_CLASSES, OVERLAY_LIGHT_CLASSES } from "../monaco";
 import EditorDiv from "./EditorDiv";
 import { useDropzone } from "@lkekana/dropzone";
 
@@ -13,14 +13,6 @@ interface PlainEditorProps {
 	onDrop: (files: File[]) => void;
 	overlayActiveState: [boolean, React.Dispatch<React.SetStateAction<boolean>>];
 }
-
-const OVERLAY_BASE_CLASSES = `drop-overlay w-full h-full flex items-center justify-center z-9999 text-center p-4 box-border rounded-lg border border-blue-500/50 transition-opacity duration-150`;
-const OVERLAY_DARK_CLASSES = `bg-black/20 border-blue-500/50 text-white`;
-const OVERLAY_LIGHT_CLASSES = `bg-white/60 border-gray-300 text-gray-800`;
-
-const MESSAGE_BOX_BASE_CLASSES = `p-5 rounded-lg border-2 border-dashed pointer-events-none text-lg`;
-const MESSAGE_BOX_DARK_CLASSES = `bg-white/10 border-white/50 text-white`;
-const MESSAGE_BOX_LIGHT_CLASSES = `bg-black/5 border-gray-400/50 text-gray-800`;
 
 export default function PlainEditor({
 	model,
