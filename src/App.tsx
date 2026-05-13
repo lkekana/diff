@@ -172,10 +172,14 @@ function App() {
 	const [buttonColors, setButtonColors] = useState("bg-gray-700 hover:bg-gray-600");
 	const [modelsReady, setModelsReady] = useState(false);
 	const [editorType, setEditorType] = useState<"plain" | "diff">("plain");
+
 	const originalModelRef = useRef<editor.ITextModel | null>(null);
 	const originalModelContentChangeListenerRef = useRef<IDisposable | null>(null);
 	const modifiedModelRef = useRef<editor.ITextModel | null>(null);
 	const modifiedModelContentChangeListenerRef = useRef<IDisposable | null>(null);
+	const originalLoadedTextRef = useRef<string | null>(null);
+	const modifiedLoadedTextRef = useRef<string | null>(null);
+
 	const [originalState, setOriginalState] = useState<LoadedFile | null>(null);
 	const [modifiedState, setModifiedState] = useState<LoadedFile | null>(null);
 	const [language, setLanguage] = useState(initialLanguage);
@@ -184,6 +188,8 @@ function App() {
 	const [sideBySide, setSideBySide] = useState(true);
 	const isMountedRef = useRef(true);
 	const [isLoadingFiles, setIsLoadingFiles] = useState(false);
+	const [originalIsDirty, setOriginalIsDirty] = useState(false);
+	const [modifiedIsDirty, setModifiedIsDirty] = useState(false);
 
 	const anyFileLoaded = !originalFileOverlayActive || !modifiedFileOverlayActive;
 
@@ -225,11 +231,23 @@ function App() {
 		const originalChangeEvent = originalModel.onDidChangeContent(() => {
 			const currentText = originalModel.getValue();
 			console.log("Original model content changed. Current text length:", currentText.length);
+			const loadedText = originalLoadedTextRef.current;
+			if (loadedText !== null && currentText !== loadedText) {
+				setOriginalIsDirty(true);
+			} else {
+				setOriginalIsDirty(false);
+			}
 		});
 		const modifiedModel = editor.createModel(modifiedTextContent, initialLanguage);
 		const modifiedChangeEvent = modifiedModel.onDidChangeContent(() => {
 			const currentText = modifiedModel.getValue();
 			console.log("Modified model content changed. Current text length:", currentText.length);
+			const loadedText = modifiedLoadedTextRef.current;
+			if (loadedText !== null && currentText !== loadedText) {
+				setModifiedIsDirty(true);
+			} else {
+				setModifiedIsDirty(false);
+			}
 		});
 
 		originalModelRef.current = originalModel;
@@ -258,6 +276,8 @@ function App() {
 		setOriginalFileOverlayActive(true);
 		setModifiedFileOverlayActive(true);
 		setSideBySide(true);
+		setOriginalIsDirty(false);
+		setModifiedIsDirty(false);
 
 		setTimeout(() => {
 			if (oldOriginalModel !== null) {
@@ -275,6 +295,12 @@ function App() {
 			if (oldModifiedChangeListener !== null) {
 				oldModifiedChangeListener.dispose();
 				modifiedModelContentChangeListenerRef.current = null;
+			}
+			if (originalLoadedTextRef.current !== null) {
+				originalLoadedTextRef.current = null;
+			}
+			if (modifiedLoadedTextRef.current !== null) {
+				modifiedLoadedTextRef.current = null;
 			}
 		}, 0); // Run timeout at the end of the event loop to allow state to reset before creating new models
 
@@ -316,49 +342,61 @@ function App() {
 		}
 	}, [modifiedFileOverlayActive, originalFileOverlayActive, modifiedState, originalState]);
 
-	const onFileDrop = (
-		files: File[],
-		setState: (value: React.SetStateAction<LoadedFile | null>) => void,
-		targetModelRef: React.MutableRefObject<editor.ITextModel | null>,
-	) => {
-		// console.log("onFileDrop called with files:", files, "Event:", event);
-		if (files.length === 0) return;
-		const file = files[0];
-		const getFileData = async () => {
-			try {
-				const path = await window.electronAPI.getFilePath(file);
-				console.log("File:", file, "Path:", path);
-				const reader = new FileReader();
-				reader.onload = () => {
-					const loadedText = reader.result as string;
+	const onFileDrop = useCallback(
+		(
+			files: File[],
+			setState: (value: React.SetStateAction<LoadedFile | null>) => void,
+			targetModelRef: React.MutableRefObject<editor.ITextModel | null>,
+		) => {
+			// console.log("onFileDrop called with files:", files, "Event:", event);
+			if (files.length === 0) return;
+			const file = files[0];
+			const getFileData = async () => {
+				try {
+					const path = await window.electronAPI.getFilePath(file);
+					console.log("File:", file, "Path:", path);
+					const reader = new FileReader();
+					reader.onload = () => {
+						const loadedText = reader.result as string;
 
-					const model = targetModelRef.current;
-					if (model !== null) {
-						model.setValue(loadedText);
+						const model = targetModelRef.current;
+						if (model !== null) {
+							model.setValue(loadedText);
+						}
+
+						console.log(`Loaded file content (first 100 chars): ${loadedText.slice(0, 100)}`);
+						setState({ path, loadedText });
+					};
+					reader.readAsText(file);
+
+					const detectedLanguage = await window.electronAPI.detectLanguage(path);
+					if (detectedLanguage !== null && detectedLanguage !== language) {
+						const isLang = isLanguageID(detectedLanguage);
+						const monacoHasLang = languages.getLanguages().some((l) => l.id === detectedLanguage);
+						console.log(
+							`Detected language: ${detectedLanguage}, isLanguageID: ${isLang}, Monaco supports: ${monacoHasLang}`,
+						);
+						if (isLang && monacoHasLang) {
+							setLanguage(detectedLanguage);
+						}
 					}
-
-					setState({ path, loadedText });
-				};
-				reader.readAsText(file);
-
-				const detectedLanguage = await window.electronAPI.detectLanguage(path);
-				if (detectedLanguage !== null && detectedLanguage !== language) {
-					const isLang = isLanguageID(detectedLanguage);
-					const monacoHasLang = languages.getLanguages().some((l) => l.id === detectedLanguage);
-					console.log(
-						`Detected language: ${detectedLanguage}, isLanguageID: ${isLang}, Monaco supports: ${monacoHasLang}`,
-					);
-					if (isLang && monacoHasLang) {
-						setLanguage(detectedLanguage);
-					}
+				} catch (error) {
+					console.error("Failed to load file:", error);
 				}
-			} catch (error) {
-				console.error("Failed to load file:", error);
-			}
-		};
+			};
 
-		getFileData();
-	};
+			getFileData();
+		},
+		[language],
+	);
+
+	useEffect(() => {
+		originalLoadedTextRef.current = originalState?.loadedText ?? null;
+	}, [originalState?.loadedText]);
+
+	useEffect(() => {
+		modifiedLoadedTextRef.current = modifiedState?.loadedText ?? null;
+	}, [modifiedState?.loadedText]);
 
 	// Sync theme with Monaco
 	useEffect(() => {
@@ -409,6 +447,8 @@ function App() {
 		};
 	}, []);
 
+	const anyChanges = originalIsDirty || modifiedIsDirty;
+
 	// print window dimensions
 	console.log(`Window dimensions: ${window.innerWidth}x${window.innerHeight}`);
 
@@ -452,6 +492,28 @@ function App() {
 					</div>
 				)}
 			</div>
+
+			{/* File Changes Status Bar */}
+			{anyChanges && (
+				<div className="flex w-full mt-1">
+					<div className="w-1/2 flex justify-center items-center px-1">
+						{originalIsDirty && (
+							<span className="text-xs text-orange-400 font-medium animate-pulse flex items-center gap-1">
+								<span className="w-2 h-2 bg-orange-500 rounded-full inline-block"></span>
+								Original Unsaved
+							</span>
+						)}
+					</div>
+					<div className="w-1/2 flex justify-center items-center px-1">
+						{modifiedIsDirty && (
+							<span className="text-xs text-orange-400 font-medium animate-pulse flex items-center gap-1">
+								<span className="w-2 h-2 bg-orange-500 rounded-full inline-block"></span>
+								Modified Unsaved
+							</span>
+						)}
+					</div>
+				</div>
+			)}
 
 			{/* Footer */}
 			<div
