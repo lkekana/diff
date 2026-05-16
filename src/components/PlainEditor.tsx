@@ -1,8 +1,12 @@
-import { useCallback, useEffect, useId, useRef } from "react";
-import { editor as monacoEditor } from "monaco-editor";
-import { DEFAULT_FONTS, MESSAGE_BOX_BASE_CLASSES, MESSAGE_BOX_DARK_CLASSES, MESSAGE_BOX_LIGHT_CLASSES, MonacoTheme, OVERLAY_BASE_CLASSES, OVERLAY_DARK_CLASSES, OVERLAY_LIGHT_CLASSES } from "../monaco";
+import { useEffect, useId, useRef } from "react";
+import { KeyCode, KeyMod, editor as monacoEditor } from "monaco-editor";
+import {
+	DEFAULT_FONTS,
+	MonacoTheme,
+} from "../monaco";
 import EditorDiv from "./EditorDiv";
 import { useDropzone } from "@lkekana/dropzone";
+import { getOverlayWidget, updateOverlayWidget } from "./MonacoOverlay";
 
 interface PlainEditorProps {
 	model: monacoEditor.ITextModel | null;
@@ -48,43 +52,6 @@ export default function PlainEditor({
 		},
 	});
 
-	// Create overlay widget
-	const createOverlayWidget = useCallback((): monacoEditor.IOverlayWidget => {
-		return {
-			getId: () => `plain-editor-overlay-${id}`,
-			getDomNode: () => {
-				if (overlayDivRef.current === null) {
-					overlayDivRef.current = document.createElement("div");
-
-					// overlayDivRef.current.className = `${OVERLAY_BASE_CLASSES} ${
-					// 	isDragActive
-					// 		? "backdrop-blur-sm bg-black/20"
-					// 		: "backdrop-blur-none bg-grey/50"
-					// }`;
-					overlayDivRef.current.className = `${OVERLAY_BASE_CLASSES}`;
-					overlayDivRef.current.onclick = () => {
-						setOverlayActiveState(false);
-						if (editorRef.current) {
-							editorRef.current.focus();
-						}
-					};
-
-					if (overlayMessageBoxRef.current === null) {
-						overlayMessageBoxRef.current = document.createElement("div");
-						// overlayMessageBoxRef.current.className = MESSAGE_BOX_CLASSES;
-						overlayMessageBoxRef.current.className = `${MESSAGE_BOX_BASE_CLASSES}`;
-						overlayMessageBoxRef.current.textContent =
-							"Start typing to get started. Or drop a file here. Or double click to find a file.";
-					}
-
-					overlayDivRef.current.appendChild(overlayMessageBoxRef.current);
-				}
-				return overlayDivRef.current;
-			},
-			getPosition: () => null,
-		};
-	}, [id, setOverlayActiveState]);
-
 	// biome-ignore lint/correctness/useExhaustiveDependencies: Run once on mount
 	useEffect(() => {
 		if (containerRef.current === null || initializedRef.current) return;
@@ -112,7 +79,17 @@ export default function PlainEditor({
 		editorRef.current = editor;
 
 		// Create and conditionally add overlay widget
-		overlayWidgetRef.current = createOverlayWidget();
+		overlayWidgetRef.current = {
+			getId: () => `plain-editor-overlay-${id}`,
+			getDomNode: () =>
+				getOverlayWidget({
+					overlayActiveState: [overlayActiveState, setOverlayActiveState],
+					overlayDivRef,
+					overlayMessageBoxRef,
+					editor,
+				}),
+			getPosition: () => null,
+		} as monacoEditor.IOverlayWidget;
 
 		// Show overlay if either internal state or drag state indicates it should be visible
 		// const shouldShowOverlay = overlayActiveState || isDragActive;
@@ -153,33 +130,15 @@ export default function PlainEditor({
 		const overlayDiv = overlayDivRef.current;
 		const messageBox = overlayMessageBoxRef.current;
 		if (editor === null || widget === null || overlayDiv === null || messageBox === null) return;
-
-		const isLightTheme = activeTheme === ("light" as MonacoTheme);
+		updateOverlayWidget({
+			overlayDiv,
+			messageBox,
+			activeTheme,
+			isDragActive,
+		});
 
 		const shouldShowOverlay = overlayActiveState || isDragActive;
-
 		if (shouldShowOverlay) {
-			// Update overlay text based on state
-			messageBox.textContent = isDragActive
-				? "📁 Drop file here to load"
-				: "Start typing to get started. Or drop a file here. Or double click to find a file.";
-
-			const themeOverlayClasses = isLightTheme ? OVERLAY_LIGHT_CLASSES : OVERLAY_DARK_CLASSES;
-			const themeMessageClasses = isLightTheme ? MESSAGE_BOX_LIGHT_CLASSES : MESSAGE_BOX_DARK_CLASSES;
-
-			// Determine State Classes (Drag vs Idle)
-			// You might want different opacity/blur when actively dragging vs just idle overlay
-			const stateClasses = isDragActive ? "backdrop-blur-sm bg-opacity-80" : "backdrop-blur-none bg-opacity-50";
-
-			// overlayDiv.className = `${OVERLAY_BASE_CLASSES} ${
-			// 	isDragActive ? "backdrop-blur-sm bg-black/20" : "backdrop-blur-none bg-grey/50"
-			// }`;
-
-			overlayDiv.className = `${OVERLAY_BASE_CLASSES} ${themeOverlayClasses} ${stateClasses}`;
-			messageBox.className = `${MESSAGE_BOX_BASE_CLASSES} ${themeMessageClasses}`;
-
-			// editor.removeOverlayWidget(widget);
-			// editor.addOverlayWidget(widget);
 			if (overlayDiv.parentNode === null) {
 				editor.addOverlayWidget(widget);
 			}
