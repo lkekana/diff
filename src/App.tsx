@@ -190,7 +190,7 @@ function App() {
 	const [isLoadingFiles, setIsLoadingFiles] = useState(false);
 	const [originalIsDirty, setOriginalIsDirty] = useState(false);
 	const [modifiedIsDirty, setModifiedIsDirty] = useState(false);
-	const [diffEditorActiveSide, setDiffEditorActiveSide] = useState<DiffActiveEditor>(null);
+	const [diffEditorActiveSide, setDiffEditorActiveSide] = useState<DiffActiveEditor>("original");
 
 	const anyFileLoaded = !originalFileOverlayActive || !modifiedFileOverlayActive;
 
@@ -472,11 +472,16 @@ function App() {
 						<DiffEditor
 							originalModel={originalModelRef.current}
 							modifiedModel={modifiedModelRef.current}
+							activeTheme={theme}
 							activeEditor={[diffEditorActiveSide, setDiffEditorActiveSide]}
 							editable={true}
 							sideBySide={sideBySide}
 							diffAlgorithm="advanced"
 							fontSize={fontSize}
+							// originalOverlayActiveState={[true, setOriginalFileOverlayActive]}
+							// modifiedOverlayActiveState={[true, setModifiedFileOverlayActive]}
+							onOriginalFileDrop={(files) => onFileDrop(files, setOriginalState, originalModelRef)}
+							onModifiedFileDrop={(files) => onFileDrop(files, setModifiedState, modifiedModelRef)}
 						/>
 					</div>
 				) : (
