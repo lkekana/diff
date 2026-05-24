@@ -65,7 +65,7 @@ jobs:
           - host: macos-latest
             target: x86_64-apple-darwin
             build: pnpm build --target x86_64-apple-darwin
-            electron_wildcard: '*-Mac-*-x64.*'
+            electron_wildcard: '*-Mac-*-x64.zip*'
           - host: windows-latest
             build: pnpm build --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
@@ -73,7 +73,7 @@ jobs:
           - host: macos-latest
             target: aarch64-apple-darwin
             build: pnpm build --target aarch64-apple-darwin
-            electron_wildcard: '*-Mac-*-arm64.*'
+            electron_wildcard: '*-Mac-*-arm64.zip*'
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             build: pnpm build --target aarch64-pc-windows-msvc
