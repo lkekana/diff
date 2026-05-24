@@ -1,8 +1,5 @@
 import { editor as monacoEditor } from "monaco-editor";
-import {
-	ActiveEditor,
-	MonacoTheme,
-} from "../monaco";
+import { ActiveEditor, MonacoTheme } from "../monaco";
 
 export const OVERLAY_BASE_CLASSES = `drop-overlay w-full h-full flex items-center justify-center z-9998 text-center p-4 box-border rounded-lg border border-blue-500/50 transition-opacity duration-150`;
 export const OVERLAY_DARK_CLASSES = `bg-black/20 border-blue-500/50 text-white`;
@@ -17,7 +14,7 @@ interface CreateOverlayWidgetProps {
 	overlayDivRef: React.MutableRefObject<HTMLDivElement | null>;
 	overlayMessageBoxRef: React.MutableRefObject<HTMLDivElement | null>;
 	editor: monacoEditor.IStandaloneCodeEditor;
-    divProps?: React.HTMLAttributes<HTMLDivElement>;
+	divProps?: React.HTMLAttributes<HTMLDivElement>;
 }
 
 export const getOverlayWidget = ({
@@ -73,7 +70,7 @@ export const updateOverlayWidget = ({
 
 	// Determine State Classes (Drag vs Idle)
 	// You might want different opacity/blur when actively dragging vs just idle overlay
-    const stateClasses = isDragActive ? "backdrop-blur-sm" : "backdrop-blur-none";
+	const stateClasses = isDragActive ? "backdrop-blur-sm" : "backdrop-blur-none";
 
 	overlayDiv.className = `${OVERLAY_BASE_CLASSES} ${themeOverlayClasses} ${stateClasses}`;
 	messageBox.className = `${MESSAGE_BOX_BASE_CLASSES} ${themeMessageClasses}`;
@@ -107,8 +104,8 @@ export const getDiffOverlayWidget = ({
 };
 
 interface UpdateDiffOverlayWidgetProps {
-    activeEditor: ActiveEditor;
-    widgetParent: ActiveEditor;
+	activeEditor: ActiveEditor;
+	widgetParent: ActiveEditor;
 	overlayDiv: HTMLDivElement;
 	messageBox: HTMLDivElement;
 	activeTheme: MonacoTheme;
@@ -116,25 +113,25 @@ interface UpdateDiffOverlayWidgetProps {
 }
 
 export const updateDiffOverlayWidget = ({
-    activeEditor,
-    widgetParent,
+	activeEditor,
+	widgetParent,
 	overlayDiv,
 	messageBox,
 	activeTheme,
 	isDragActive,
 }: UpdateDiffOverlayWidgetProps) => {
-    if (activeEditor === null || widgetParent === null) {
-        return;
-    }
+	if (activeEditor === null || widgetParent === null) {
+		return;
+	}
 	const isLightTheme = activeTheme === ("light" as MonacoTheme);
 
 	// Update overlay text based on state
-    messageBox.textContent = isDragActive ? "📁 Drop file here to load\n(active)" : null;
+	messageBox.textContent = isDragActive ? "📁 Drop file here to load\n(active)" : null;
 
 	const themeOverlayClasses = isLightTheme ? OVERLAY_LIGHT_CLASSES : OVERLAY_DARK_CLASSES;
 	const themeMessageClasses = isLightTheme ? MESSAGE_BOX_LIGHT_CLASSES : MESSAGE_BOX_DARK_CLASSES;
-    const stateClasses = isDragActive ? "backdrop-blur-sm" : "backdrop-blur-none";
+	const stateClasses = isDragActive ? "backdrop-blur-sm" : "backdrop-blur-none";
 
-    overlayDiv.className = `${OVERLAY_BASE_CLASSES} ${themeOverlayClasses} ${stateClasses}`;
+	overlayDiv.className = `${OVERLAY_BASE_CLASSES} ${themeOverlayClasses} ${stateClasses}`;
 	messageBox.className = `${MESSAGE_BOX_BASE_CLASSES} ${themeMessageClasses}`;
 };

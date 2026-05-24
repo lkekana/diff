@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -6,6 +6,7 @@ import fsAsync from "node:fs/promises";
 import fs from "node:fs";
 import { randomUUID } from "crypto";
 import { isBinaryFile } from "isbinaryfile";
+import { getPosixCode, isNodeError } from "./fs-errors";
 
 const appID = "com.lesedikekana.diff";
 
@@ -69,6 +70,60 @@ async function createDefaultFiles() {
 createDefaultFiles().catch((error) => {
 	console.error("Failed to create default files:", error);
 });
+
+async function saveFileWithDialog(
+	defaultPath: string,
+	model: "original" | "modified",
+	text: string,
+): Promise<{
+	path?: string;
+	posixErrorCode?: string;
+	otherError?: string;
+}> {
+	const { canceled, filePath } = await dialog.showSaveDialog({
+		title: `Save ${model} file`,
+		defaultPath,
+		// buttonLabel: "Save",
+		// filters: [{ name: "Text Files", extensions: ["txt"] }],
+	});
+	console.log(`Save dialog result - canceled: ${canceled}, filePath: ${filePath}`);
+
+	if (!canceled && filePath) {
+		return saveFileSilently(filePath, text);
+	} else {
+		console.log("File save canceled by user.");
+		return { otherError: "File save canceled by user." };
+	}
+}
+
+async function saveFileSilently(
+	defaultPath: string,
+	text: string,
+): Promise<{
+	path?: string;
+	posixErrorCode?: string;
+	otherError?: string;
+}> {
+	try {
+		await fsAsync.writeFile(defaultPath, text, "utf-8");
+		console.log(`File saved successfully at ${defaultPath}`);
+		return { path: defaultPath };
+	} catch (error: unknown) {
+		console.error(error);
+		if (isNodeError(error)) {
+			const code = getPosixCode(error);
+			return {
+				posixErrorCode: code,
+			};
+		}
+
+		return Promise.reject(
+			new Error(
+				`An unexpected error occurred while saving the file: ${error instanceof Error ? error.message : String(error)}`,
+			),
+		);
+	}
+}
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 
@@ -265,5 +320,54 @@ ipcMain.handle("cleanup-temp-folder", async (_event, excludedFiles: string[] = [
 		throw error;
 	}
 });
+
+ipcMain.handle(
+	"save-file-dialog",
+	async (
+		_event,
+		defaultPath: string,
+		model: "original" | "modified",
+		text: string,
+	): Promise<{
+		path?: string;
+		posixErrorCode?: string;
+		otherError?: string;
+	}> => {
+		try {
+			return await saveFileWithDialog(defaultPath, model, text);
+		} catch (error: unknown) {
+			console.error(error);
+			return Promise.reject(
+				new Error(
+					`An unexpected error occurred while saving the file: ${error instanceof Error ? error.message : String(error)}`,
+				),
+			);
+		}
+	},
+);
+
+ipcMain.handle(
+	"save-file-silently",
+	async (
+		_event,
+		defaultPath: string,
+		text: string,
+	): Promise<{
+		path?: string;
+		posixErrorCode?: string;
+		otherError?: string;
+	}> => {
+		try {
+			return await saveFileSilently(defaultPath, text);
+		} catch (error: unknown) {
+			console.error(error);
+			return Promise.reject(
+				new Error(
+					`An unexpected error occurred while saving the file: ${error instanceof Error ? error.message : String(error)}`,
+				),
+			);
+		}
+	},
+);
 
 app.whenReady().then(createWindow);

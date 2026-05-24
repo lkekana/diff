@@ -1,9 +1,6 @@
 import { useEffect, useId, useRef } from "react";
 import { editor as monacoEditor } from "monaco-editor";
-import {
-	DEFAULT_FONTS,
-	MonacoTheme,
-} from "../monaco";
+import { DEFAULT_FONTS, MonacoTheme } from "../monaco";
 import EditorDiv from "./EditorDiv";
 import { useDropzone } from "@lkekana/dropzone";
 import { getOverlayWidget, updateOverlayWidget } from "./MonacoOverlay";

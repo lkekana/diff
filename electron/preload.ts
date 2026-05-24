@@ -17,6 +17,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
 	createTempFile: (fileData: string): Promise<string> => ipcRenderer.invoke("create-temp-file", fileData),
 	cleanupTempFolder: (excludedFiles: string[] = []): Promise<void> =>
 		ipcRenderer.invoke("cleanup-temp-folder", excludedFiles),
+	saveFileWithDialog: (
+		defaultPath: string,
+		model: "original" | "modified",
+		text: string,
+	): Promise<{
+		path?: string;
+		posixErrorCode?: string;
+		otherError?: string;
+	}> =>
+		ipcRenderer.invoke("save-file-dialog", defaultPath, model, text),
+	saveFileSilently: (defaultPath: string, text: string): Promise<{
+		path?: string;
+		posixErrorCode?: string;
+		otherError?: string;
+	}> =>
+		ipcRenderer.invoke("save-file-silently", defaultPath, text),
 });
 
 // --------- Expose some API to the Renderer process ---------

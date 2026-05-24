@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import DiffEditor from "./components/DiffEditor";
 import { ActiveEditor, isLanguageID, type MonacoTheme } from "./monaco";
 import PlainEditor, { PlainEditorSkeleton } from "./components/PlainEditor";
-import { editor, IDisposable, languages } from "monaco-editor";
+import { editor, IDisposable, KeyCode, KeyMod, languages } from "monaco-editor";
 import type * as React from "react";
 import toast, { Toaster, ToastOptions } from "react-hot-toast";
+import { FsErrorCode } from "../electron/fs-errors";
 
 const PaletteIcon = () => (
 	<svg
@@ -403,6 +404,120 @@ function App() {
 		},
 		[language],
 	);
+
+	const saveFile = useCallback(
+		async (target: "original" | "modified") => {
+			const isOriginal = target === "original";
+
+			const model = isOriginal ? originalModelRef.current : modifiedModelRef.current;
+			const state = isOriginal ? originalState : modifiedState;
+			const setState = isOriginal ? setOriginalState : setModifiedState;
+			const setIsDirty = isOriginal ? setOriginalIsDirty : setModifiedIsDirty;
+
+			if (model === null) {
+				console.warn(`No model found for ${target}. Save action aborted.`);
+				return;
+			}
+
+			const currentText = model.getValue();
+			const isDirty = state === null || currentText !== state.loadedText;
+			if (!isDirty) {
+				console.log("Original model has no changes to save.");
+				return;
+			}
+
+			// get default extension for language
+			const extension = languages.getLanguages().find((l) => l.id === language)?.extensions?.[0] ?? ".txt";
+
+			try {
+				const result = await (state !== null && state.path
+					? window.electronAPI.saveFileSilently(state.path, currentText)
+					: window.electronAPI.saveFileWithDialog(
+							`${target}-${Date.now()}${extension}`,
+							target,
+							currentText,
+						));
+				console.log("Save result:", result);
+
+				if (result.path) {
+					console.log(`File saved successfully at ${result.path}`);
+
+					toast.success(`${target.charAt(0).toUpperCase() + target.slice(1)} file saved!`, toastOptions);
+
+					setState({ path: result.path, loadedText: currentText });
+					setIsDirty(false);
+				} else if (result.otherError) {
+					toast.error(
+						`Could not save ${target} file. Error: ${result.otherError}`,
+						toastOptions,
+					);
+				} else if (result.posixErrorCode) {
+					switch (result.posixErrorCode) {
+						case FsErrorCode.PERMISSION_DENIED:
+						case FsErrorCode.OPERATION_NOT_PERMITTED:
+							toast.error(
+								`Permission denied when saving ${target} file. Cannot write to the specified location.`,
+								toastOptions,
+							);
+							break;
+
+						case FsErrorCode.NO_SPACE:
+							toast.error(`Disk is full. Could not save ${target} file.`, toastOptions);
+							break;
+
+						case FsErrorCode.NOT_FOUND:
+							toast.error(`Directory not found. Could not save ${target} file.`, toastOptions);
+							break;
+
+						default:
+							toast.error(
+								`Could not save ${target} file. Error code: ${result.posixErrorCode}`,
+								toastOptions,
+							);
+							break;
+					}
+				}
+			} catch (error) {
+				console.error("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+				toast.error(error instanceof Error ? error.message : `Could not save ${target} file.`, toastOptions);
+				console.error(error);
+			}
+		},
+		[originalState, modifiedState, language, toastOptions],
+	);
+
+	const saveFileRef = useRef(saveFile);
+	useEffect(() => {
+		saveFileRef.current = saveFile;
+	}, [saveFile]);
+
+	useEffect(() => {
+		editor.addEditorAction({
+			id: "save-file",
+			label: "Save Active File",
+			keybindings: [KeyMod.CtrlCmd | KeyCode.KeyS],
+			run: (activeMonacoEditor) => {
+				if (originalModelRef.current === null && modifiedModelRef.current === null) {
+					console.warn("No models are currently loaded. Save action aborted.");
+					return;
+				}
+
+				const activeModel = activeMonacoEditor.getModel();
+				if (activeModel === null) {
+					console.warn("Active editor has no model somehow? Save action aborted.");
+					return;
+				}
+
+				if (activeModel.id === originalModelRef.current?.id) {
+					console.log("Active model is original. Triggering save for original.");
+					saveFileRef.current?.("original");
+				} else if (activeModel === modifiedModelRef.current) {
+					console.log("Active model is modified. Triggering save for modified.");
+					saveFileRef.current?.("modified");
+				}
+			},
+		});
+	}, []);
 
 	useEffect(() => {
 		originalLoadedTextRef.current = originalState?.loadedText ?? null;

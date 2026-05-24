@@ -26,6 +26,23 @@ declare global {
 			copyFileToTmp: (originalFile: File) => Promise<string>;
 			createTempFile: (fileData: string) => Promise<string>;
 			cleanupTempFolder: (excludedFiles?: string[]) => Promise<void>;
+			saveFileWithDialog: (
+				defaultPath: string,
+				model: "original" | "modified",
+				text: string,
+			) => Promise<{
+				path?: string;
+				posixErrorCode?: string;
+				otherError?: string;
+			}>;
+			saveFileSilently: (
+				defaultPath: string,
+				text: string,
+			) => Promise<{
+				path?: string;
+				posixErrorCode?: string;
+				otherError?: string;
+			}>;
 		};
 	}
 }
