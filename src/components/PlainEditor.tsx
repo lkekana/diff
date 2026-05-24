@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef } from "react";
-import { KeyCode, KeyMod, editor as monacoEditor } from "monaco-editor";
+import { editor as monacoEditor } from "monaco-editor";
 import {
 	DEFAULT_FONTS,
 	MonacoTheme,
@@ -15,6 +15,7 @@ interface PlainEditorProps {
 	className?: string;
 	readOnly?: boolean;
 	onDrop: (files: File[]) => void;
+	onActive: () => void;
 	overlayActiveState: [boolean, React.Dispatch<React.SetStateAction<boolean>>];
 }
 
@@ -25,6 +26,7 @@ export default function PlainEditor({
 	className = "",
 	readOnly = false,
 	onDrop,
+	onActive,
 	overlayActiveState: [overlayActiveState, setOverlayActiveState],
 }: PlainEditorProps) {
 	const id = useId();
@@ -75,6 +77,13 @@ export default function PlainEditor({
 			dragAndDrop: false,
 		});
 
+		editor.onDidFocusEditorWidget(() => {
+			onActive();
+		});
+		editor.onDidFocusEditorText(() => {
+			onActive();
+		});
+
 		editor.setModel(model);
 		editorRef.current = editor;
 
@@ -94,9 +103,10 @@ export default function PlainEditor({
 		// Show overlay if either internal state or drag state indicates it should be visible
 		// const shouldShowOverlay = overlayActiveState || isDragActive;
 		// if (shouldShowOverlay && overlayWidgetRef.current !== null) {
-			// editor.addOverlayWidget(overlayWidgetRef.current);
-			// editor.layout();
+		// editor.addOverlayWidget(overlayWidgetRef.current);
+		// editor.layout();
 		// }
+
 		editor.addOverlayWidget(overlayWidgetRef.current);
 		editor.layout();
 

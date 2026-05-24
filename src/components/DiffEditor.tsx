@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { editor, KeyCode, KeyMod } from "monaco-editor";
-import { type DiffAlgorithm, DEFAULT_FONTS, DiffActiveEditor, MonacoTheme } from "../monaco";
+import { editor } from "monaco-editor";
+import { type DiffAlgorithm, DEFAULT_FONTS, ActiveEditor, MonacoTheme } from "../monaco";
 import EditorDiv from "./EditorDiv";
 import { useDropzone } from "@lkekana/dropzone";
 import { getDiffOverlayWidget, updateDiffOverlayWidget } from "./MonacoOverlay";
@@ -9,7 +9,7 @@ interface DiffEditorProps {
 	originalModel: editor.ITextModel | null;
 	modifiedModel: editor.ITextModel | null;
 	activeTheme: MonacoTheme;
-	activeEditor: [DiffActiveEditor, React.Dispatch<React.SetStateAction<DiffActiveEditor>>];
+	activeEditor: [ActiveEditor, React.Dispatch<React.SetStateAction<ActiveEditor>>];
 	editable?: boolean;
 	sideBySide?: boolean;
 	diffAlgorithm?: DiffAlgorithm;

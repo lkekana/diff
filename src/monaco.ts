@@ -2,7 +2,7 @@
 
 export type DiffAlgorithm = "advanced" | "legacy";
 export type MonacoTheme = "vs" | "vs-dark" | "hc-black";
-export type DiffActiveEditor = "original" | "modified" | null;
+export type ActiveEditor = "original" | "modified" | null;
 export type LanguageID =
 	| "plaintext"
 	| "json"

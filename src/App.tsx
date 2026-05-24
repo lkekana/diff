@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import DiffEditor from "./components/DiffEditor";
-import { DiffActiveEditor, isLanguageID, type MonacoTheme } from "./monaco";
+import { ActiveEditor, isLanguageID, type MonacoTheme } from "./monaco";
 import PlainEditor, { PlainEditorSkeleton } from "./components/PlainEditor";
 import { editor, IDisposable, languages } from "monaco-editor";
 import type * as React from "react";
@@ -201,7 +201,7 @@ function App() {
 	const [isLoadingFiles, setIsLoadingFiles] = useState(false);
 	const [originalIsDirty, setOriginalIsDirty] = useState(false);
 	const [modifiedIsDirty, setModifiedIsDirty] = useState(false);
-	const [diffEditorActiveSide, setDiffEditorActiveSide] = useState<DiffActiveEditor>("original");
+	const [activeEditor, setActiveEditor] = useState<ActiveEditor>(null);
 
 	const anyFileLoaded = !originalFileOverlayActive || !modifiedFileOverlayActive;
 
@@ -241,6 +241,7 @@ function App() {
 
 		const originalModel = editor.createModel(originalTextContent, initialLanguage);
 		const originalChangeEvent = originalModel.onDidChangeContent(() => {
+			setActiveEditor("original");
 			const currentText = originalModel.getValue();
 			console.log("Original model content changed. Current text length:", currentText.length);
 			const loadedText = originalLoadedTextRef.current;
@@ -252,6 +253,7 @@ function App() {
 		});
 		const modifiedModel = editor.createModel(modifiedTextContent, initialLanguage);
 		const modifiedChangeEvent = modifiedModel.onDidChangeContent(() => {
+			setActiveEditor("modified");
 			const currentText = modifiedModel.getValue();
 			console.log("Modified model content changed. Current text length:", currentText.length);
 			const loadedText = modifiedLoadedTextRef.current;
@@ -459,8 +461,8 @@ function App() {
 	}, [originalFileOverlayActive, modifiedFileOverlayActive, editorType]);
 
 	useEffect(() => {
-		console.log("Diff editor active side changed:", diffEditorActiveSide);
-	}, [diffEditorActiveSide]);
+		console.log("Active editor changed:", activeEditor);
+	}, [activeEditor]);
 
 	// Setup Monaco models on mount and cleanup on unmount
 	// biome-ignore lint/correctness/useExhaustiveDependencies: setupModels is memoized and won't change, and we only want to run this on mount/unmount
@@ -506,7 +508,7 @@ function App() {
 							originalModel={originalModelRef.current}
 							modifiedModel={modifiedModelRef.current}
 							activeTheme={theme}
-							activeEditor={[diffEditorActiveSide, setDiffEditorActiveSide]}
+							activeEditor={[activeEditor, setActiveEditor]}
 							editable={true}
 							sideBySide={sideBySide}
 							diffAlgorithm="advanced"
@@ -525,6 +527,7 @@ function App() {
 							onDrop={(files) => onFileDrop(files, setOriginalState, originalModelRef)}
 							overlayActiveState={[originalFileOverlayActive, setOriginalFileOverlayActive]}
 							activeTheme={theme}
+							onActive={() => setActiveEditor("original")}
 						/>
 						<PlainEditor
 							model={modifiedModelRef.current}
@@ -532,6 +535,7 @@ function App() {
 							onDrop={(files) => onFileDrop(files, setModifiedState, modifiedModelRef)}
 							overlayActiveState={[modifiedFileOverlayActive, setModifiedFileOverlayActive]}
 							activeTheme={theme}
+							onActive={() => setActiveEditor("modified")}
 						/>
 					</div>
 				)}

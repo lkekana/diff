@@ -1,6 +1,6 @@
 import { editor as monacoEditor } from "monaco-editor";
 import {
-	DiffActiveEditor,
+	ActiveEditor,
 	MonacoTheme,
 } from "../monaco";
 
@@ -107,8 +107,8 @@ export const getDiffOverlayWidget = ({
 };
 
 interface UpdateDiffOverlayWidgetProps {
-    activeEditor: DiffActiveEditor;
-    widgetParent: DiffActiveEditor;
+    activeEditor: ActiveEditor;
+    widgetParent: ActiveEditor;
 	overlayDiv: HTMLDivElement;
 	messageBox: HTMLDivElement;
 	activeTheme: MonacoTheme;
