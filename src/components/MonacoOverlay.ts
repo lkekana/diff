@@ -4,7 +4,7 @@ import {
 	MonacoTheme,
 } from "../monaco";
 
-export const OVERLAY_BASE_CLASSES = `drop-overlay w-full h-full flex items-center justify-center z-9999 text-center p-4 box-border rounded-lg border border-blue-500/50 transition-opacity duration-150`;
+export const OVERLAY_BASE_CLASSES = `drop-overlay w-full h-full flex items-center justify-center z-9998 text-center p-4 box-border rounded-lg border border-blue-500/50 transition-opacity duration-150`;
 export const OVERLAY_DARK_CLASSES = `bg-black/20 border-blue-500/50 text-white`;
 export const OVERLAY_LIGHT_CLASSES = `bg-white/60 border-gray-300 text-gray-800`;
 

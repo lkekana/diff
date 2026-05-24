@@ -4,6 +4,7 @@ import { DiffActiveEditor, isLanguageID, type MonacoTheme } from "./monaco";
 import PlainEditor, { PlainEditorSkeleton } from "./components/PlainEditor";
 import { editor, IDisposable, languages } from "monaco-editor";
 import type * as React from "react";
+import toast, { Toaster, ToastOptions } from "react-hot-toast";
 
 const PaletteIcon = () => (
 	<svg
@@ -170,6 +171,16 @@ function App() {
 	// console.log(languages.getLanguages());
 	const [theme, setTheme] = useState<MonacoTheme>("vs-dark");
 	const [buttonColors, setButtonColors] = useState("bg-gray-700 hover:bg-gray-600");
+	const [toastOptions, setToastOptions] = useState<ToastOptions>({
+		style: {
+			borderRadius: "8px",
+			background: "#323232",
+			color: "#fff",
+			fontSize: "14px",
+			zIndex: 9999,
+		},
+		className: `monaco-editor`,
+	} as ToastOptions);
 	const [modelsReady, setModelsReady] = useState(false);
 	const [editorType, setEditorType] = useState<"plain" | "diff">("plain");
 
@@ -404,8 +415,28 @@ function App() {
 		editor.setTheme(theme);
 		if (theme === ("light" as MonacoTheme)) {
 			setButtonColors("bg-gray-300 hover:bg-gray-200");
+			setToastOptions({
+				style: {
+					borderRadius: "8px",
+					background: "#d1d5dc",
+					color: "#101828",
+					fontSize: "14px",
+					zIndex: 9999,
+				},
+				className: `monaco-editor`,
+			} as ToastOptions);
 		} else {
 			setButtonColors("bg-gray-700 hover:bg-gray-600");
+			setToastOptions({
+				style: {
+					borderRadius: "8px",
+					background: "#323232",
+					color: "#fff",
+					fontSize: "14px",
+					zIndex: 9999,
+				},
+				className: `monaco-editor`,
+			} as ToastOptions);
 		}
 	}, [theme]);
 
@@ -459,6 +490,8 @@ function App() {
 
 	return (
 		<div className="monaco-editor flex flex-col h-screen w-screen overflow-hidden p-1 bg-gray-900 text-white">
+			<Toaster position="bottom-center" />
+
 			{/* <h1 className="text-2xl mb-2">Language: {language}</h1> */}
 
 			{/* Editor(s) */}
